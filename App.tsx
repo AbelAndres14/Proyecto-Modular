@@ -13,7 +13,7 @@ import ActividadScreen from './screens/Actividad';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
-
+//me ayudaron con git
 function Tabs() {
   return (
     <Tab.Navigator
