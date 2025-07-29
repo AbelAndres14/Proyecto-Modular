@@ -1,0 +1,80 @@
+import { StyleSheet } from 'react-native';
+
+export const styles = StyleSheet.create({
+  container: {
+    padding: 24,
+    backgroundColor: '#0B1F3F',
+    flexGrow: 1,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 28,
+    color: '#00D2FF',
+    fontWeight: '900',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  label: {
+    alignSelf: 'flex-start',
+    color: '#A0BFEF',
+    fontSize: 16,
+    marginBottom: 12,
+    fontWeight: '600',
+  },
+  objetosContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 30,
+    justifyContent: 'center',
+  },
+  objetoBtn: {
+    backgroundColor: '#1A2A57',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    margin: 6,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    shadowColor: '#00D2FF',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 7,
+  },
+  objetoBtnSelected: {
+    borderColor: '#00D2FF',
+    backgroundColor: '#003355',
+  },
+  objetoBtnText: {
+    color: '#A0BFEF',
+    fontWeight: '600',
+  },
+  objetoBtnTextSelected: {
+    color: '#00D2FF',
+  },
+  input: {
+    width: '100%',
+    height: 48,
+    backgroundColor: '#1A2A57',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    color: '#FFFFFF',
+    fontSize: 16,
+    marginBottom: 30,
+  },
+  pedirBtn: {
+    backgroundColor: '#00D2FF',
+    borderRadius: 30,
+    paddingVertical: 16,
+    paddingHorizontal: 50,
+    shadowColor: '#00D2FF',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.7,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  pedirBtnText: {
+    color: '#0B1F3F',
+    fontWeight: '900',
+    fontSize: 20,
+  },
+});
