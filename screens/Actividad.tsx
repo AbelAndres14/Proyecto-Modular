@@ -7,7 +7,7 @@ type Viaje = {
   objeto: string;
   direccion: string;
   fecha: string;
-  estado: 'Entregado' | 'En camino' | 'Cancelado';
+  estado: 'Entregado' | 'En camino' | 'Cancelado' | 'Error';
 };
 
 const viajes: Viaje[] = [
