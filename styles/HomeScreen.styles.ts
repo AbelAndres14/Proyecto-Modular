@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 
 export const styles = StyleSheet.create({
   container: {
@@ -76,5 +76,25 @@ export const styles = StyleSheet.create({
     color: '#0B1F3F',
     fontWeight: '900',
     fontSize: 20,
+  },
+  pickerContainer: {
+    width: '100%',
+    height: 55, // altura fija necesaria en iOS
+    backgroundColor: '#1A2A57',
+    borderRadius: 12,
+    marginBottom: 30,
+    paddingHorizontal: 10,
+    overflow: 'hidden',
+    
+  },
+  picker: {
+    color: '#000000ff',
+    width: '100%',
+    height: '100%',
+    ...Platform.select({
+      ios: {
+        flex: 5, // 👈 necesario en iOS para que se muestre
+      },
+    }),
   },
 });

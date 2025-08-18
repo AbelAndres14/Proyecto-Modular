@@ -1,65 +1,83 @@
-import { StyleSheet, Dimensions } from 'react-native';
-
-const { width } = Dimensions.get('window');
+import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#0B1F3F',
-    alignItems: 'center',
+    flexGrow: 1,
+    padding: 20,
+    backgroundColor: '#f2f2f2',
     justifyContent: 'center',
-    paddingHorizontal: 30,
   },
+
   title: {
-    fontSize: 36,
-    fontWeight: '900',
-    color: '#00D2FF',
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
     marginBottom: 10,
-    textAlign: 'center',
-    letterSpacing: 2,
   },
+
   subtitle: {
-    fontSize: 18,
-    color: '#A0BFEF',
-    marginBottom: 40,
+    fontSize: 16,
+    color: '#666',
     textAlign: 'center',
+    marginBottom: 30,
   },
+
+  input: {
+    height: 50,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginVertical: 8,
+    backgroundColor: '#fff',
+    color: '#000',
+  },
+
   button: {
-    width: width * 0.8,
-    paddingVertical: 16,
-    borderRadius: 30,
-    marginVertical: 12,
+    padding: 15,
+    borderRadius: 8,
+    marginTop: 12,
     alignItems: 'center',
-    shadowColor: '#00D2FF',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 12,
   },
+
   loginButton: {
-    backgroundColor: '#00D2FF',
+    backgroundColor: '#007BFF',
   },
+
   registerButton: {
-    borderWidth: 2,
-    borderColor: '#00D2FF',
-    backgroundColor: 'transparent',
+    backgroundColor: '#fff',
+    borderColor: '#007BFF',
+    borderWidth: 1,
   },
+
   buttonText: {
-    color: '#0B1F3F',
-    fontWeight: '700',
-    fontSize: 18,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
+
   registerButtonText: {
-    color: '#00D2FF',
+    color: '#007BFF',
   },
+
+  pedirBtn: {
+    backgroundColor: '#28a745',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+
+  pedirBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+
   footer: {
-    color: '#3D5470',
-    marginTop: 50,
-    fontSize: 14,
-    letterSpacing: 1,
+    marginTop: 40,
+    textAlign: 'center',
+    color: '#aaa',
+    fontSize: 12,
   },
-
-
-
-  
 });

@@ -14,8 +14,9 @@ import ActividadScreen from './screens/Actividad';
 import PerfilScreen from './screens/Perfil';
 import NotificacionesScreen from './screens/Notificaciones';
 import PrivacidadScreen from './screens/Privacidad';
+import Registro from './screens/Registro';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator(); 
 const Tab = createBottomTabNavigator();
 
 function Tabs() {
@@ -67,7 +68,8 @@ function LoginScreen({ navigation }: Props) {
 
       <TouchableOpacity
         style={[styles.button, styles.registerButton]}
-        onPress={() => alert('Funcionalidad de registro próximamente')}
+        onPress={() => navigation.navigate('Registro')}
+
       >
         <Text style={[styles.buttonText, styles.registerButtonText]}>Registrarse</Text>
       </TouchableOpacity>
@@ -86,6 +88,7 @@ export default function App() {
 
         {/* 👉 Aquí agregas las nuevas pantallas */}
         <Stack.Screen name="Perfil" component={PerfilScreen} />
+        <Stack.Screen name="Registro" component={Registro} />
         <Stack.Screen name="Notificaciones" component={NotificacionesScreen} />
         <Stack.Screen name="Privacidad" component={PrivacidadScreen} />
       </Stack.Navigator>
