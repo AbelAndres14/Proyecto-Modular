@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Modal } from 'react-native';
 import { styles } from './styles/LoginScreen.styles';
 
 import { NavigationContainer } from '@react-navigation/native';
@@ -7,13 +7,17 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
+// Pantallas principales
 import HomeScreen from './screens/Home';
 import ConfiguracionesScreen from './screens/Configuraciones';
 import ActividadScreen from './screens/Actividad';
+import PerfilScreen from './screens/Perfil';
+import NotificacionesScreen from './screens/Notificaciones';
+import PrivacidadScreen from './screens/Privacidad';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
-//me ayudaron con git
+
 function Tabs() {
   return (
     <Tab.Navigator
@@ -79,6 +83,11 @@ export default function App() {
       <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="MainTabs" component={Tabs} />
+
+        {/* 👉 Aquí agregas las nuevas pantallas */}
+        <Stack.Screen name="Perfil" component={PerfilScreen} />
+        <Stack.Screen name="Notificaciones" component={NotificacionesScreen} />
+        <Stack.Screen name="Privacidad" component={PrivacidadScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
