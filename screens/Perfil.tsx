@@ -11,14 +11,14 @@ export default function PerfilScreen() {
           style={styles.avatar}
         />
         <Text style={styles.name}>Abel Andres Hernández</Text>
-        <Text style={styles.email}>abel@example.com</Text>
+        <Text style={styles.email}>abel@mail.com</Text>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Información</Text>
         <View style={styles.infoItem}>
           <Text style={styles.label}>Teléfono:</Text>
-          <Text style={styles.value}>+52 333 222 1906</Text>
+          <Text style={styles.value}>+52 333 222 4165</Text>
         </View>
         <View style={styles.infoItem}>
           <Text style={styles.label}>Ubicación:</Text>

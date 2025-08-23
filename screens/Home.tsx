@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  ImageBackground,
+  Dimensions,
 } from 'react-native';
 
 type CuadrosOpcionesProps = {
@@ -60,54 +62,78 @@ const CuadrosOpciones = ({ data, seleccion, setSeleccion, titulo }: CuadrosOpcio
 };
 
 export default function Home() {
-  const objetos = [
-    'Paquete pequeño',
-    'Documento importante',
-    'otro',
-  ];
-
-  const estaciones = [
-    'Estación Norte',
-    'Estación Sur',
-    'Estación Este',
-    'Estación Oeste',
-  ];
+  const objetos = ['Paquete pequeño', 'Documento importante', 'otro'];
+  const estaciones = ['Estación Norte', 'Estación Sur', 'Estación Este', 'Estación Oeste'];
 
   const [ubicacion, setUbicacion] = useState('');
   const [objetoSeleccionado, setObjetoSeleccionado] = useState(objetos[0]);
   const [destinatario, setDestinatario] = useState('');
   const [estacionSeleccionada, setEstacionSeleccionada] = useState(estaciones[0]);
+  const [puntoSeleccionado, setPuntoSeleccionado] = useState('');
+
+  // Puntos de interés en el mapa (coordenadas relativas a la imagen)
+  const puntos = [
+    { x: 50, y: 100, nombre: 'Módulo A' },
+    { x: 150, y: 180, nombre: 'Módulo B' },
+    { x: 250, y: 120, nombre: 'Auditorio' },
+    { x: 350, y: 300, nombre: 'Biblioteca CID' },
+    { x: 450, y: 220, nombre: 'Área de comida' },
+  ];
 
   const enviarViaje = () => {
-    if (!ubicacion.trim() || !destinatario.trim() || !estacionSeleccionada) {
+    if (!puntoSeleccionado || !destinatario.trim() || !estacionSeleccionada) {
       Alert.alert('Faltan datos', 'Por favor, completa todos los campos.');
       return;
     }
 
     Alert.alert(
       'Viaje enviado',
-      `📍 Desde: ${ubicacion}\n📦 Objeto: ${objetoSeleccionado}\n👤 Para: ${destinatario}\n📬 Estación: ${estacionSeleccionada}`
+      `📍 Desde: ${puntoSeleccionado}\n📦 Objeto: ${objetoSeleccionado}\n👤 Para: ${destinatario}\n📬 Estación: ${estacionSeleccionada}`
     );
 
     // Limpiar campos
-    setUbicacion('');
+    setPuntoSeleccionado('');
     setDestinatario('');
     setObjetoSeleccionado(objetos[0]);
     setEstacionSeleccionada(estaciones[0]);
   };
 
+  // Obtener ancho de pantalla para el mapa
+  const screenWidth = Dimensions.get('window').width;
+
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Enviar un viaje al Robot</Text>
 
-      <Text style={styles.label}>¿Dónde estás?</Text>
-      <TextInput
-        placeholder="Ej. Calle 456, Edificio B"
-        placeholderTextColor="#7a7a7a"
-        style={styles.input}
-        value={ubicacion}
-        onChangeText={setUbicacion}
-      />
+      {/* MAPA */}
+      <Text style={styles.label}>Selecciona tu ubicación en el mapa:</Text>
+      <ImageBackground
+        source={require('../assets/01.jpg')}
+        style={{ width: screenWidth - 20, height: 300, marginBottom: 10 }}
+      >
+        {puntos.map((p, i) => (
+          <TouchableOpacity
+            key={i}
+            style={{
+              position: 'absolute',
+              left: p.x,
+              top: p.y,
+              width: 30,
+              height: 30,
+              backgroundColor: puntoSeleccionado === p.nombre ? '#8b0000ff' : 'rgba(255,0,0,0.7)',
+              borderRadius: 15,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+            onPress={() => setPuntoSeleccionado(p.nombre)}
+          >
+            <Text style={{ color: '#fff', fontSize: 12 }}>📍</Text>
+          </TouchableOpacity>
+        ))}
+      </ImageBackground>
+      {puntoSeleccionado !== '' && (
+        <Text style={{ marginBottom: 10, fontWeight: 'bold' }}>Ubicación seleccionada: {puntoSeleccionado}</Text>
+      )}
 
       <CuadrosOpciones
         data={objetos}

@@ -28,14 +28,44 @@ export default function RegistroScreen({ navigation }: any) {
     }
   };
 
-  const handleRegistro = () => {
-    if (!nombre || !apellido || !telefono || !correo || !photoUri) {
-      Alert.alert('Campos incompletos', 'Por favor llena todos los campos y toma una foto.');
-      return;
+const handleRegistro = async () => {
+  if (!nombre || !apellido || !telefono || !correo) {
+    Alert.alert('Campos incompletos', 'Por favor llena todos los campos.');
+    return;
+  }
+
+  try {
+    const userData = {
+      nombre: nombre + ' ' + apellido,
+      email: correo,  // Cambiado de "correo" a "email"
+      password: telefono,
+      images: photoUri || '' // Agrega la imagen si existe
+    };
+
+    // ✅ PUERTO 3337
+    const response = await fetch('http://192.168.33.35:3337/api/usuario', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData)
+    });
+
+    const data = await response.json();
+    console.log('Respuesta del servidor:', data);
+
+    if (data.success) {
+      Alert.alert('Registro exitoso', `Bienvenido, ${nombre} ${apellido}`);
+      navigation.replace('MainTabs');
+    } else {
+      Alert.alert('Error al registrar', data.error || 'Intenta nuevamente');
     }
-    Alert.alert('Registro exitoso', `Bienvenido, ${nombre} ${apellido}`);
-    navigation.replace('MainTabs');
-  };
+  } catch (error) {
+    console.error('Error en la petición:', error);
+    Alert.alert('Error', 'No se pudo conectar al servidor');
+  }
+};
+
 
   if (hasPermission === null) {
     return <View style={styles.container}><Text>Solicitando permiso de cámara...</Text></View>;
