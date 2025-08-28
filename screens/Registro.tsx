@@ -8,6 +8,7 @@ export default function RegistroScreen({ navigation }: any) {
   const [apellido, setApellido] = useState('');
   const [telefono, setTelefono] = useState('');
   const [correo, setCorreo] = useState('');
+  const [password, setPassword] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const cameraRef = useRef<any>(null); // Cambiado a any para evitar error TS
@@ -28,44 +29,44 @@ export default function RegistroScreen({ navigation }: any) {
     }
   };
 
-const handleRegistro = async () => {
-  if (!nombre || !apellido || !telefono || !correo) {
-    Alert.alert('Campos incompletos', 'Por favor llena todos los campos.');
-    return;
-  }
-
-  try {
-    const userData = {
-      nombre: nombre + ' ' + apellido,
-      email: correo,  // Cambiado de "correo" a "email"
-      password: telefono,
-      images: photoUri || '' // Agrega la imagen si existe
-    };
-
-    // ✅ PUERTO 3337
-    const response = await fetch('http://192.168.33.35:3337/api/usuario', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData)
-    });
-
-    const data = await response.json();
-    console.log('Respuesta del servidor:', data);
-
-    if (data.success) {
-      Alert.alert('Registro exitoso', `Bienvenido, ${nombre} ${apellido}`);
-      navigation.replace('MainTabs');
-    } else {
-      Alert.alert('Error al registrar', data.error || 'Intenta nuevamente');
+  const handleRegistro = async () => {
+    if (!nombre || !apellido || !telefono || !correo || !password) {
+      Alert.alert('Campos incompletos', 'Por favor llena todos los campos.');
+      return;
     }
-  } catch (error) {
-    console.error('Error en la petición:', error);
-    Alert.alert('Error', 'No se pudo conectar al servidor');
-  }
-};
 
+    try {
+      const userData = {
+        nombre: nombre,
+        apellido: apellido,
+        telefono: telefono,
+        correo: correo,
+        password: password
+      };
+
+      // ✅ PUERTO 3337
+      const response = await fetch('https://api-abel.teamsystem.space/api/usuario', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData)
+      });
+
+      const data = await response.json();
+      console.log('Respuesta del servidor:', data);
+
+      if (data.success) {
+        Alert.alert('Registro exitoso', `Bienvenido, ${nombre} ${apellido}`);
+        navigation.replace('MainTabs');
+      } else {
+        Alert.alert('Error al registrar', data.error || 'Intenta nuevamente');
+      }
+    } catch (error) {
+      console.error('Error en la petición:', error);
+      Alert.alert('Error', 'No se pudo conectar al servidor');
+    }
+  };
 
   if (hasPermission === null) {
     return <View style={styles.container}><Text>Solicitando permiso de cámara...</Text></View>;
@@ -103,6 +104,7 @@ const handleRegistro = async () => {
       <TextInput placeholder="Apellido" style={styles.input} value={apellido} onChangeText={setApellido} placeholderTextColor="#aaa" />
       <TextInput placeholder="Teléfono" style={styles.input} value={telefono} onChangeText={setTelefono} keyboardType="phone-pad" placeholderTextColor="#aaa" />
       <TextInput placeholder="Correo" style={styles.input} value={correo} onChangeText={setCorreo} keyboardType="email-address" placeholderTextColor="#aaa" />
+      <TextInput placeholder="Contraseña" style={styles.input} value={password} onChangeText={setPassword} secureTextEntry placeholderTextColor="#aaa" />
 
       {photoUri ? (
         <Image source={{ uri: photoUri }} style={{ width: 200, height: 200, borderRadius: 100, marginVertical: 20 }} />

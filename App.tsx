@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { styles } from './styles/LoginScreen.styles';
 
 import { NavigationContainer } from '@react-navigation/native';
@@ -14,7 +14,8 @@ import ActividadScreen from './screens/Actividad';
 import PerfilScreen from './screens/Perfil';
 import NotificacionesScreen from './screens/Notificaciones';
 import PrivacidadScreen from './screens/Privacidad';
-import Registro from './screens/Registro';
+import RegistroScreen from './screens/Registro';
+import LoginFormScreen from './screens/Login'; // Nueva pantalla de login
 
 const Stack = createNativeStackNavigator(); 
 const Tab = createBottomTabNavigator();
@@ -49,19 +50,16 @@ function Tabs() {
   );
 }
 
-interface Props {
-  navigation: any;
-}
-
-function LoginScreen({ navigation }: Props) {
+// Pantalla inicial con botones
+function InicioScreen({ navigation }: { navigation: any }) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Bienvenido al Wally</Text>
-      <Text style={styles.subtitle}>Controla tu robot con facilidad </Text>
+      <Text style={styles.subtitle}>Controla tu robot con facilidad</Text>
 
       <TouchableOpacity
         style={[styles.button, styles.loginButton]}
-        onPress={() => navigation.replace('MainTabs')}
+        onPress={() => navigation.navigate('LoginForm')}
       >
         <Text style={styles.buttonText}>Iniciar Sesión</Text>
       </TouchableOpacity>
@@ -69,7 +67,6 @@ function LoginScreen({ navigation }: Props) {
       <TouchableOpacity
         style={[styles.button, styles.registerButton]}
         onPress={() => navigation.navigate('Registro')}
-
       >
         <Text style={[styles.buttonText, styles.registerButtonText]}>Registrarse</Text>
       </TouchableOpacity>
@@ -82,13 +79,19 @@ function LoginScreen({ navigation }: Props) {
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Navigator initialRouteName="Inicio" screenOptions={{ headerShown: false }}>
+        {/* Pantalla inicial */}
+        <Stack.Screen name="Inicio" component={InicioScreen} />
+
+        {/* Pantalla de login con correo y contraseña */}
+        <Stack.Screen name="LoginForm" component={LoginFormScreen} />
+
+        {/* Tabs principales */}
         <Stack.Screen name="MainTabs" component={Tabs} />
 
-        {/* 👉 Aquí agregas las nuevas pantallas */}
+        {/* Pantallas adicionales */}
         <Stack.Screen name="Perfil" component={PerfilScreen} />
-        <Stack.Screen name="Registro" component={Registro} />
+        <Stack.Screen name="Registro" component={RegistroScreen} />
         <Stack.Screen name="Notificaciones" component={NotificacionesScreen} />
         <Stack.Screen name="Privacidad" component={PrivacidadScreen} />
       </Stack.Navigator>

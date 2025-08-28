@@ -18,7 +18,7 @@ export default function ConfiguracionesScreen({ navigation }: Props) {
     if (destino) {
       navigation.navigate(destino);
     } else {
-      navigation.replace('Login');
+      navigation.replace('Inicio');
     }
   };
 
