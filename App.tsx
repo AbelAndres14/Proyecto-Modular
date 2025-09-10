@@ -15,7 +15,8 @@ import PerfilScreen from './screens/Perfil';
 import NotificacionesScreen from './screens/Notificaciones';
 import PrivacidadScreen from './screens/Privacidad';
 import RegistroScreen from './screens/Registro';
-import LoginFormScreen from './screens/Login'; // Nueva pantalla de login
+import LoginFormScreen from './screens/Login';
+import RobotControl from './screens/RobotControl'; // Nueva pantalla
 
 const Stack = createNativeStackNavigator(); 
 const Tab = createBottomTabNavigator();
@@ -29,6 +30,8 @@ function Tabs() {
 
           if (route.name === 'Inicio') {
             iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Robot') {
+            iconName = focused ? 'hardware-chip' : 'hardware-chip-outline';
           } else if (route.name === 'Configuraciones') {
             iconName = focused ? 'settings' : 'settings-outline';
           } else if (route.name === 'Actividad') {
@@ -45,6 +48,7 @@ function Tabs() {
     >
       <Tab.Screen name="Actividad" component={ActividadScreen} />
       <Tab.Screen name="Inicio" component={HomeScreen} />
+      <Tab.Screen name="Robot" component={RobotControl} />
       <Tab.Screen name="Configuraciones" component={ConfiguracionesScreen} />
     </Tab.Navigator>
   );

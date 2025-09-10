@@ -1,13 +1,4 @@
 {
-  "name": "modular2025",
-  "version": "1.0.0",
-  "main": "index.ts",
-  "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
-  },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -27,12 +18,13 @@
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
     "react-native-vector-icons": "^10.3.0",
-    "react-native-vision-camera": "^4.7.1"
+    "react-native-vision-camera": "^4.7.1",
+    "mqtt": "^5.10.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@types/react": "~19.0.10",
+    "@types/mqtt": "^4.0.0",
     "typescript": "~5.8.3"
-  },
-  "private": true
+  }
 }

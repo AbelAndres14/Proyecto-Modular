@@ -7,11 +7,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function LoginFormScreen({ navigation }: any) {
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
+  const [codigo, setCodigo] = useState(''); // Nuevo estado para código de estudiante
 
 
 const handleLogin = async () => {
-  if (!correo || !password) {
-    Alert.alert('Campos incompletos', 'Por favor ingresa correo y contraseña.');
+  if (!correo || !password || !codigo) {
+    Alert.alert('Campos incompletos', 'Por favor ingresa correo, contraseña y código de estudiante.');
     return;
   }
 
@@ -19,7 +20,7 @@ const handleLogin = async () => {
     const response = await fetch('https://api-abel.teamsystem.space/api/usuario/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ correo, password })
+      body: JSON.stringify({ correo, password, codigo }) // Incluir código en la petición
     });
 
     const data = await response.json();
@@ -53,6 +54,8 @@ const handleLogin = async () => {
         value={correo}
         onChangeText={setCorreo}
       />
+
+  
 
       <TextInput
         placeholder="Contraseña"
