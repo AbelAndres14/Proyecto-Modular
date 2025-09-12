@@ -11,27 +11,26 @@ export default function LoginFormScreen({ navigation }: any) {
 
 
 const handleLogin = async () => {
-  if (!correo || !password || !codigo) {
-    Alert.alert('Campos incompletos', 'Por favor ingresa correo, contraseña y código de estudiante.');
+  if (!correo || !password) {
+    Alert.alert('Campos incompletos', 'Por favor ingresa correo y contraseña.');
     return;
   }
 
   try {
-    const response = await fetch('https://api-abel.teamsystem.space/api/usuario/login', {
+    // ✅ URL corregida y sin código de estudiante
+    const response = await fetch('http://192.168.33.30:3008/api/usuario/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ correo, password, codigo }) // Incluir código en la petición
+      body: JSON.stringify({ correo, password })
     });
 
     const data = await response.json();
     console.log('Respuesta del servidor:', data);
 
     if (data.success) {
-      // 🔹 Guardar usuario en AsyncStorage para usar en PerfilScreen
       await AsyncStorage.setItem('user', JSON.stringify(data.user));
-
       Alert.alert('Bienvenido', `Hola, ${data.user.nombre}`);
-      navigation.replace('MainTabs'); // Va a la app principal
+      navigation.replace('MainTabs');
     } else {
       Alert.alert('Error', data.error || 'Correo o contraseña incorrectos');
     }

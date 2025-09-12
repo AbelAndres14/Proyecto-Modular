@@ -1,7 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
+// RegistroScreen.tsx
+import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Image, StyleSheet } from 'react-native';
-import { Camera } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import { styles } from '../styles/LoginScreen.styles';
+
+interface UsuarioResponse {
+  success: boolean;
+  error?: string;
+  message?: string;
+  usuario?: any;
+}
+
+interface RostroResponse {
+  success: boolean;
+  error?: string;
+  message?: string;
+  rostroId?: string;
+}
 
 export default function RegistroScreen({ navigation }: any) {
   const [nombre, setNombre] = useState('');
@@ -10,91 +25,86 @@ export default function RegistroScreen({ navigation }: any) {
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const cameraRef = useRef<any>(null); // Cambiado a any para evitar error TS
-  const [cameraVisible, setCameraVisible] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
-  }, []);
-
+  // Abrir cámara para tomar foto
   const takePhoto = async () => {
-    if (cameraRef.current) {
-      const photo = await cameraRef.current.takePictureAsync();
-      setPhotoUri(photo.uri);
-      setCameraVisible(false);
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso denegado', 'Necesitas permisos para usar la cámara');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setPhotoUri(result.assets[0].uri);
+      await uploadPhoto(result.assets[0].uri);
     }
   };
 
+  const retakePhoto = () => setPhotoUri(null);
+
+  // Subir foto al servidor
+  const uploadPhoto = async (uri: string) => {
+    if (!uri) return;
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('rostro_image', { uri, type: 'image/jpeg', name: 'rostro.jpg' } as any);
+      formData.append('timestamp', new Date().toISOString());
+      formData.append('correo', correo);
+
+      const response = await fetch('http://192.168.33.30:3008/api/rostro/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'multipart/form-data' },
+        body: formData,
+      });
+
+      const data: RostroResponse = await response.json();
+      if (data.success) Alert.alert('Éxito', 'Rostro registrado correctamente');
+      else Alert.alert('Error', data.error || 'No se pudo registrar el rostro');
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'No se pudo enviar el rostro al servidor');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Registrar usuario
   const handleRegistro = async () => {
     if (!nombre || !apellido || !telefono || !correo || !password) {
       Alert.alert('Campos incompletos', 'Por favor llena todos los campos.');
       return;
     }
+    if (!photoUri) {
+      Alert.alert('Foto requerida', 'Por favor captura tu rostro antes de registrarte.');
+      return;
+    }
 
     try {
-      const userData = {
-        nombre: nombre,
-        apellido: apellido,
-        telefono: telefono,
-        correo: correo,
-        password: password
-      };
-
-      // ✅ PUERTO 3337
-      const response = await fetch('https://api-abel.teamsystem.space/api/usuario', {
+      const userData = { nombre, apellido, telefono, correo, password };
+      const response = await fetch('http://192.168.33.30:3008/api/usuario/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
       });
 
-      const data = await response.json();
-      console.log('Respuesta del servidor:', data);
-
+      const data: UsuarioResponse = await response.json();
       if (data.success) {
         Alert.alert('Registro exitoso', `Bienvenido, ${nombre} ${apellido}`);
         navigation.replace('MainTabs');
-      } else {
-        Alert.alert('Error al registrar', data.error || 'Intenta nuevamente');
-      }
+      } else Alert.alert('Error al registrar', data.error || 'Intenta nuevamente');
     } catch (error) {
-      console.error('Error en la petición:', error);
+      console.error(error);
       Alert.alert('Error', 'No se pudo conectar al servidor');
     }
   };
-
-  if (hasPermission === null) {
-    return <View style={styles.container}><Text>Solicitando permiso de cámara...</Text></View>;
-  }
-  if (hasPermission === false) {
-    return <View style={styles.container}><Text>No se concedió permiso para usar la cámara.</Text></View>;
-  }
-
-  if (cameraVisible) {
-    return (
-      <View style={{ flex: 1 }}>
-        {/* @ts-ignore */}
-        <Camera style={{ flex: 1 }} ref={cameraRef} type={Camera.Constants.Type.front}>
-          <View style={cameraStyles.cameraControls}>
-            <TouchableOpacity style={cameraStyles.captureButton} onPress={takePhoto}>
-              <Text style={cameraStyles.captureText}>Tomar Foto</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[cameraStyles.captureButton, { backgroundColor: 'red', marginTop: 10 }]}
-              onPress={() => setCameraVisible(false)}
-            >
-              <Text style={cameraStyles.captureText}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        </Camera>
-      </View>
-    );
-  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -107,37 +117,31 @@ export default function RegistroScreen({ navigation }: any) {
       <TextInput placeholder="Contraseña" style={styles.input} value={password} onChangeText={setPassword} secureTextEntry placeholderTextColor="#aaa" />
 
       {photoUri ? (
-        <Image source={{ uri: photoUri }} style={{ width: 200, height: 200, borderRadius: 100, marginVertical: 20 }} />
+        <View style={cameraStyles.photoContainer}>
+          <Image source={{ uri: photoUri }} style={cameraStyles.photoPreview} />
+          <TouchableOpacity style={[styles.pedirBtn, { backgroundColor: '#FF6B6B', marginTop: 10 }]} onPress={retakePhoto}>
+            <Text style={styles.pedirBtnText}>Tomar Otra</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
-        <TouchableOpacity style={styles.pedirBtn} onPress={() => setCameraVisible(true)}>
-          <Text style={styles.pedirBtnText}>Capturar Rostro</Text>
+        <TouchableOpacity style={styles.pedirBtn} onPress={takePhoto}>
+          <Text style={styles.pedirBtnText}>📸 Capturar Rostro</Text>
         </TouchableOpacity>
       )}
 
-      <TouchableOpacity style={styles.pedirBtn} onPress={handleRegistro}>
-        <Text style={styles.pedirBtnText}>Registrarse</Text>
+      <TouchableOpacity style={[styles.pedirBtn, (!photoUri || isUploading) && { backgroundColor: '#ccc' }]} onPress={handleRegistro} disabled={!photoUri || isUploading}>
+        <Text style={styles.pedirBtnText}>{isUploading ? 'Procesando...' : 'Registrarse'}</Text>
       </TouchableOpacity>
+
+      <Text style={cameraStyles.statusText}>
+        {!photoUri ? '👆 Primero captura tu rostro para continuar' : '✅ Rostro capturado - Listo para registrar'}
+      </Text>
     </ScrollView>
   );
 }
 
 const cameraStyles = StyleSheet.create({
-  cameraControls: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingBottom: 30,
-  },
-  captureButton: {
-    backgroundColor: '#00D2FF',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderRadius: 10,
-  },
-  captureText: {
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: 18,
-  },
+  photoContainer: { alignItems: 'center', marginVertical: 20 },
+  photoPreview: { width: 200, height: 200, borderRadius: 100, borderWidth: 3, borderColor: '#00D2FF' },
+  statusText: { textAlign: 'center', color: '#666', fontSize: 14, marginTop: 10, fontStyle: 'italic' },
 });
