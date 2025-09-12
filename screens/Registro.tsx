@@ -59,7 +59,7 @@ export default function RegistroScreen({ navigation }: any) {
       formData.append('timestamp', new Date().toISOString());
       formData.append('correo', correo);
 
-      const response = await fetch('http://192.168.33.30:3008/api/rostro/', {
+      const response = await fetch('https://apiabel.teamsystem.space/api/rostro/', {
         method: 'POST',
         headers: { 'Content-Type': 'multipart/form-data' },
         body: formData,
@@ -89,7 +89,7 @@ export default function RegistroScreen({ navigation }: any) {
 
     try {
       const userData = { nombre, apellido, telefono, correo, password };
-      const response = await fetch('http://192.168.33.30:3008/api/usuario/', {
+      const response = await fetch('https://apiabel.teamsystem.space/api/usuario/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),
