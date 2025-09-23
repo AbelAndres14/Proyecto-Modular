@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { styles } from '../styles/HomeScreen.styles';
 import {
   View,
@@ -9,6 +9,7 @@ import {
   ScrollView,
   ImageBackground,
   Dimensions,
+  FlatList,
 } from 'react-native';
 
 type CuadrosOpcionesProps = {
@@ -34,7 +35,7 @@ const CuadrosOpciones = ({ data, seleccion, setSeleccion, titulo }: CuadrosOpcio
             key={item}
             onPress={() => {
               if (seleccion === item) {
-                setSeleccion(''); // Deselecciona si ya está seleccionado
+                setSeleccion('');
               } else {
                 setSeleccion(item);
               }
@@ -61,6 +62,42 @@ const CuadrosOpciones = ({ data, seleccion, setSeleccion, titulo }: CuadrosOpcio
   );
 };
 
+// Función para enviar datos a la base de datos
+const enviarViajeABaseDatos = async (datosViaje: {
+  ubicacion: string;
+  objeto: string;
+  destinatario: string;
+  estacion: string;
+  fechaCreacion: string;
+}) => {
+  try {
+    console.log('Enviando datos:', datosViaje);
+    const API_URL = 'https://apiabel.teamsystem.space/api/viajes';
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(datosViaje),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error HTTP: ${response.status} - ${errorText}`);
+    }
+
+    const resultado = await response.json();
+    return { success: true, data: resultado };
+
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido'
+    };
+  }
+};
+
 export default function Home() {
   const objetos = ['Paquete pequeño', 'Documento importante', 'otro'];
   const estaciones = ['Estación Norte', 'Estación Sur', 'Estación Este', 'Estación Oeste'];
@@ -68,10 +105,12 @@ export default function Home() {
   const [ubicacion, setUbicacion] = useState('');
   const [objetoSeleccionado, setObjetoSeleccionado] = useState(objetos[0]);
   const [destinatario, setDestinatario] = useState('');
+  const [sugerencias, setSugerencias] = useState<string[]>([]);
   const [estacionSeleccionada, setEstacionSeleccionada] = useState(estaciones[0]);
   const [puntoSeleccionado, setPuntoSeleccionado] = useState('');
+  const [enviandoViaje, setEnviandoViaje] = useState(false);
 
-  // Puntos de interés en el mapa (coordenadas relativas a la imagen)
+  // Puntos de interés en el mapa
   const puntos = [
     { x: 50, y: 100, nombre: 'Módulo A' },
     { x: 150, y: 180, nombre: 'Módulo B' },
@@ -80,25 +119,69 @@ export default function Home() {
     { x: 450, y: 220, nombre: 'Área de comida' },
   ];
 
-  const enviarViaje = () => {
+  const obtenerSugerencias = async (texto: string) => {
+    setDestinatario(texto);
+    if (texto.length < 2) {
+      setSugerencias([]);
+      return;
+    }
+    try {
+      const resp = await fetch(`https://apiabel.teamsystem.space/api/users/suggest?q=${texto}`);
+      const data = await resp.json();
+      if (data.success) {
+        setSugerencias(data.nombres);
+      } else {
+        setSugerencias([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setSugerencias([]);
+    }
+  };
+
+  const enviarViaje = async () => {
     if (!puntoSeleccionado || !destinatario.trim() || !estacionSeleccionada) {
       Alert.alert('Faltan datos', 'Por favor, completa todos los campos.');
       return;
     }
 
-    Alert.alert(
-      'Viaje enviado',
-      `📍 Desde: ${puntoSeleccionado}\n📦 Objeto: ${objetoSeleccionado}\n👤 Para: ${destinatario}\n📬 Estación: ${estacionSeleccionada}`
-    );
+    setEnviandoViaje(true);
 
-    // Limpiar campos
-    setPuntoSeleccionado('');
-    setDestinatario('');
-    setObjetoSeleccionado(objetos[0]);
-    setEstacionSeleccionada(estaciones[0]);
+    const datosViaje = {
+      ubicacion: puntoSeleccionado,
+      objeto: objetoSeleccionado,
+      destinatario: destinatario.trim(),
+      estacion: estacionSeleccionada,
+      fechaCreacion: new Date().toISOString(),
+      estado: 'pendiente',
+    };
+
+    const resultado = await enviarViajeABaseDatos(datosViaje);
+
+    if (resultado.success) {
+      Alert.alert(
+        '✅ Viaje enviado exitosamente',
+        `📍 Desde: ${puntoSeleccionado}\n📦 Objeto: ${objetoSeleccionado}\n👤 Para: ${destinatario}\n📬 Estación: ${estacionSeleccionada}`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setPuntoSeleccionado('');
+              setDestinatario('');
+              setObjetoSeleccionado(objetos[0]);
+              setEstacionSeleccionada(estaciones[0]);
+              setSugerencias([]);
+            }
+          }
+        ]
+      );
+    } else {
+      Alert.alert('❌ Error al enviar viaje', resultado.error);
+    }
+
+    setEnviandoViaje(false);
   };
 
-  // Obtener ancho de pantalla para el mapa
   const screenWidth = Dimensions.get('window').width;
 
   return (
@@ -148,8 +231,39 @@ export default function Home() {
         placeholderTextColor="#7a7a7a"
         style={styles.input}
         value={destinatario}
-        onChangeText={setDestinatario}
+        onChangeText={obtenerSugerencias}
       />
+
+      {/* Lista de sugerencias */}
+      {sugerencias.length > 0 && (
+        <FlatList
+          data={sugerencias}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              onPress={() => {
+                setDestinatario(item);
+                setSugerencias([]);
+              }}
+              style={{
+                padding: 10,
+                backgroundColor: '#eee',
+                borderBottomWidth: 1,
+                borderColor: '#ccc',
+              }}
+            >
+              <Text>{item}</Text>
+            </TouchableOpacity>
+          )}
+          style={{
+            maxHeight: 150,
+            marginBottom: 10,
+            borderWidth: 1,
+            borderColor: '#ccc',
+            borderRadius: 5,
+          }}
+        />
+      )}
 
       <CuadrosOpciones
         data={estaciones}
@@ -158,8 +272,14 @@ export default function Home() {
         titulo="¿A dónde lo mandarás?"
       />
 
-      <TouchableOpacity style={styles.pedirBtn} onPress={enviarViaje}>
-        <Text style={styles.pedirBtnText}>Enviar Viaje</Text>
+      <TouchableOpacity
+        style={[styles.pedirBtn, { opacity: enviandoViaje ? 0.6 : 1 }]}
+        onPress={enviarViaje}
+        disabled={enviandoViaje}
+      >
+        <Text style={styles.pedirBtnText}>
+          {enviandoViaje ? 'Enviando...' : 'Enviar Viaje'}
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
