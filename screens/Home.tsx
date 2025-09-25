@@ -185,102 +185,123 @@ export default function Home() {
   const screenWidth = Dimensions.get('window').width;
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Enviar un viaje al Robot</Text>
+    <ScrollView
+  contentContainerStyle={styles.container}
+  keyboardShouldPersistTaps="handled"
+>
+  <Text style={styles.title}>Enviar un viaje al Robot</Text>
 
-      {/* MAPA */}
-      <Text style={styles.label}>Selecciona tu ubicación en el mapa:</Text>
-      <ImageBackground
-        source={require('../assets/01.jpg')}
-        style={{ width: screenWidth - 20, height: 300, marginBottom: 10 }}
-      >
-        {puntos.map((p, i) => (
-          <TouchableOpacity
-            key={i}
-            style={{
-              position: 'absolute',
-              left: p.x,
-              top: p.y,
-              width: 30,
-              height: 30,
-              backgroundColor: puntoSeleccionado === p.nombre ? '#8b0000ff' : 'rgba(255,0,0,0.7)',
-              borderRadius: 15,
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-            onPress={() => setPuntoSeleccionado(p.nombre)}
-          >
-            <Text style={{ color: '#fff', fontSize: 12 }}>📍</Text>
-          </TouchableOpacity>
-        ))}
-      </ImageBackground>
-      {puntoSeleccionado !== '' && (
-        <Text style={{ marginBottom: 10, fontWeight: 'bold' }}>Ubicación seleccionada: {puntoSeleccionado}</Text>
-      )}
-
-      <CuadrosOpciones
-        data={objetos}
-        seleccion={objetoSeleccionado}
-        setSeleccion={setObjetoSeleccionado}
-        titulo="¿Qué vas a mandar?"
-      />
-
-      <Text style={styles.label}>¿A quién se lo vas a mandar?</Text>
-      <TextInput
-        placeholder="Nombre del destinatario"
-        placeholderTextColor="#7a7a7a"
-        style={styles.input}
-        value={destinatario}
-        onChangeText={obtenerSugerencias}
-      />
-
-      {/* Lista de sugerencias */}
-      {sugerencias.length > 0 && (
-        <FlatList
-          data={sugerencias}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() => {
-                setDestinatario(item);
-                setSugerencias([]);
-              }}
-              style={{
-                padding: 10,
-                backgroundColor: '#eee',
-                borderBottomWidth: 1,
-                borderColor: '#ccc',
-              }}
-            >
-              <Text>{item}</Text>
-            </TouchableOpacity>
-          )}
-          style={{
-            maxHeight: 150,
-            marginBottom: 10,
-            borderWidth: 1,
-            borderColor: '#ccc',
-            borderRadius: 5,
-          }}
-        />
-      )}
-
-      <CuadrosOpciones
-        data={estaciones}
-        seleccion={estacionSeleccionada}
-        setSeleccion={setEstacionSeleccionada}
-        titulo="¿A dónde lo mandarás?"
-      />
-
+  {/* MAPA */}
+  <Text style={styles.label}>Selecciona tu ubicación en el mapa:</Text>
+  <ImageBackground
+    source={require('../assets/01.jpg')}
+    style={{ width: screenWidth - 20, height: 300, marginBottom: 10 }}
+  >
+    {puntos.map((p, i) => (
       <TouchableOpacity
-        style={[styles.pedirBtn, { opacity: enviandoViaje ? 0.6 : 1 }]}
-        onPress={enviarViaje}
-        disabled={enviandoViaje}
+        key={i}
+        style={{
+          position: 'absolute',
+          left: p.x,
+          top: p.y,
+          width: 30,
+          height: 30,
+          backgroundColor:
+            puntoSeleccionado === p.nombre ? '#8b0000ff' : 'rgba(255,0,0,0.7)',
+          borderRadius: 15,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+        onPress={() => setPuntoSeleccionado(p.nombre)}
       >
-        <Text style={styles.pedirBtnText}>
-          {enviandoViaje ? 'Enviando...' : 'Enviar Viaje'}
-        </Text>
+        <Text style={{ color: '#fff', fontSize: 12 }}>📍</Text>
       </TouchableOpacity>
-    </ScrollView>
+    ))}
+  </ImageBackground>
+
+  {puntoSeleccionado !== '' && (
+    <Text style={{ marginBottom: 10, fontWeight: 'bold' }}>
+      Ubicación seleccionada: {puntoSeleccionado}
+    </Text>
+  )}
+
+  {/* OPCIONES */}
+  <CuadrosOpciones
+    data={objetos}
+    seleccion={objetoSeleccionado}
+    setSeleccion={setObjetoSeleccionado}
+    titulo="¿Qué vas a mandar?"
+  />
+
+  {/* DESTINATARIO */}
+  <Text style={styles.label}>¿A quién se lo vas a mandar?</Text>
+  <TextInput
+    placeholder="Nombre del destinatario"
+    placeholderTextColor="#7a7a7a"
+    style={styles.input}
+    value={destinatario}
+    onChangeText={obtenerSugerencias}
+  />
+
+  {/* LISTA DE SUGERENCIAS corregida */}
+  { sugerencias.length > 0 && (
+  <View
+    style={{
+      maxHeight: 180,
+      marginBottom: -10,
+      borderRadius: 10,
+      backgroundColor: '#fff',
+      borderWidth: 3,
+      borderColor: '#ccc',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5, // sombra Android
+      top: -25,
+      overflow: 'hidden',
+    }}
+  >
+    {sugerencias.map((item, index) => (
+      <TouchableOpacity
+        key={index}
+        onPress={() => {
+          setDestinatario(item);
+          setSugerencias([]);
+        }}
+        style={{
+          paddingVertical: 10,
+          paddingHorizontal: 30,
+          backgroundColor: '#2779fdff',
+          borderBottomWidth: index < sugerencias.length - 1 ? 1 : 0,
+          borderBottomColor: '#eee',
+        }}
+        activeOpacity={0.6}
+      >
+        <Text style={{ fontSize: 15, color: '#000000ff' }}>{item}</Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+)}
+
+  <CuadrosOpciones
+    data={estaciones}
+    seleccion={estacionSeleccionada}
+    setSeleccion={setEstacionSeleccionada}
+    titulo="¿A dónde lo mandarás?"
+  />
+
+  {/* BOTÓN ENVIAR */}
+  <TouchableOpacity
+    style={[styles.pedirBtn, { opacity: enviandoViaje ? 0.6 : 1 }]}
+    onPress={enviarViaje}
+    disabled={enviandoViaje}
+  >
+    <Text style={styles.pedirBtnText}>
+      {enviandoViaje ? 'Enviando...' : 'Enviar Viaje'}
+    </Text>
+  </TouchableOpacity>
+</ScrollView>
+
   );
 }
