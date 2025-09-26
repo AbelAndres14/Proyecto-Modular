@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { styles } from '../styles/HomeScreen.styles';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { io, Socket } from 'socket.io-client';
+
 import {
   View,
   Text,
@@ -9,7 +12,6 @@ import {
   ScrollView,
   ImageBackground,
   Dimensions,
-  FlatList,
 } from 'react-native';
 
 type CuadrosOpcionesProps = {
@@ -32,13 +34,9 @@ const CuadrosOpciones = ({ data, seleccion, setSeleccion, titulo }: CuadrosOpcio
       >
         {data.map((item) => (
           <TouchableOpacity
-            key={item}
+            key={`${titulo}-${item}`}
             onPress={() => {
-              if (seleccion === item) {
-                setSeleccion('');
-              } else {
-                setSeleccion(item);
-              }
+              setSeleccion(seleccion === item ? '' : item);
             }}
             style={{
               backgroundColor: seleccion === item ? '#8b0000ff' : '#007BFF55',
@@ -66,19 +64,16 @@ const CuadrosOpciones = ({ data, seleccion, setSeleccion, titulo }: CuadrosOpcio
 const enviarViajeABaseDatos = async (datosViaje: {
   ubicacion: string;
   objeto: string;
-  destinatario: string;
+  destinatarioId: string;
   estacion: string;
   fechaCreacion: string;
 }) => {
   try {
-    console.log('Enviando datos:', datosViaje);
     const API_URL = 'https://apiabel.teamsystem.space/api/viajes';
 
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(datosViaje),
     });
 
@@ -89,11 +84,10 @@ const enviarViajeABaseDatos = async (datosViaje: {
 
     const resultado = await response.json();
     return { success: true, data: resultado };
-
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error desconocido'
+      error: error instanceof Error ? error.message : 'Error desconocido',
     };
   }
 };
@@ -104,13 +98,43 @@ export default function Home() {
 
   const [ubicacion, setUbicacion] = useState('');
   const [objetoSeleccionado, setObjetoSeleccionado] = useState(objetos[0]);
+
+  // NUEVOS ESTADOS PARA DESTINATARIO CON ID
   const [destinatario, setDestinatario] = useState('');
-  const [sugerencias, setSugerencias] = useState<string[]>([]);
+  const [destinatarioId, setDestinatarioId] = useState<string>('');
+  const [sugerencias, setSugerencias] = useState<{ id: string; nombre: string }[]>([]);
+
   const [estacionSeleccionada, setEstacionSeleccionada] = useState(estaciones[0]);
   const [puntoSeleccionado, setPuntoSeleccionado] = useState('');
   const [enviandoViaje, setEnviandoViaje] = useState(false);
 
-  // Puntos de interés en el mapa
+  const socketRef = useRef<Socket | null>(null);
+
+  useEffect(() => {
+    const conectarSocket = async () => {
+      const userString = await AsyncStorage.getItem('user');
+      if (!userString) return;
+      const user = JSON.parse(userString);
+
+      socketRef.current = io('https://apiabel.teamsystem.space');
+
+      socketRef.current.on('connect', () => {
+        console.log('Conectado al servidor:', socketRef.current?.id);
+        socketRef.current?.emit('registrarUsuario', user.id);
+      });
+
+      socketRef.current.on('notificacion', (data) => {
+        Alert.alert(data.titulo, data.mensaje);
+      });
+    };
+
+    conectarSocket();
+
+    return () => {
+      socketRef.current?.disconnect();
+    };
+  }, []);
+
   const puntos = [
     { x: 50, y: 100, nombre: 'Módulo A' },
     { x: 150, y: 180, nombre: 'Módulo B' },
@@ -121,27 +145,66 @@ export default function Home() {
 
   const obtenerSugerencias = async (texto: string) => {
     setDestinatario(texto);
+
     if (texto.length < 2) {
       setSugerencias([]);
+      setDestinatarioId('');
       return;
     }
+
     try {
       const resp = await fetch(`https://apiabel.teamsystem.space/api/users/suggest?q=${texto}`);
       const data = await resp.json();
-      if (data.success) {
-        setSugerencias(data.nombres);
+
+      if (data.success && data.usuarios.length > 0) {
+        setSugerencias(data.usuarios);
       } else {
         setSugerencias([]);
+        setDestinatarioId('');
       }
     } catch (err) {
       console.error(err);
       setSugerencias([]);
+      setDestinatarioId('');
+    }
+  };
+
+  // --- AGREGAR ESTA FUNCIÓN DENTRO DE Home() ---
+  const enviarViajeSimulado = async () => {
+    try {
+      const response = await fetch(
+        "https://pretyphoid-unignoring-tisha.ngrok-free.dev/nuevo-viaje",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            origen: 1,
+            destino: 2,
+          }),
+        }
+      );
+
+      const data = await response.json();
+      Alert.alert("✅ Viaje simulado enviado", JSON.stringify(data));
+    } catch (error) {
+      Alert.alert("❌ Error enviando viaje simulado", error instanceof Error ? error.message : "Error desconocido");
     }
   };
 
   const enviarViaje = async () => {
-    if (!puntoSeleccionado || !destinatario.trim() || !estacionSeleccionada) {
-      Alert.alert('Faltan datos', 'Por favor, completa todos los campos.');
+    // Validación SIMPLE - sin destinatarioId
+    if (!puntoSeleccionado) {
+      Alert.alert('Falta ubicación', 'Selecciona tu ubicación en el mapa');
+      return;
+    }
+    
+    if (!destinatario.trim()) {
+      Alert.alert('Falta destinatario', 'Escribe el nombre del destinatario');
+      return;
+    }
+    
+    if (!estacionSeleccionada) {
+      Alert.alert('Falta estación', 'Selecciona una estación');
       return;
     }
 
@@ -150,11 +213,12 @@ export default function Home() {
     const datosViaje = {
       ubicacion: puntoSeleccionado,
       objeto: objetoSeleccionado,
-      destinatario: destinatario.trim(),
+      destinatarioId: destinatario, // Enviar el NOMBRE como ID temporalmente
       estacion: estacionSeleccionada,
       fechaCreacion: new Date().toISOString(),
-      estado: 'pendiente',
     };
+
+    console.log('📤 Enviando datos:', datosViaje);
 
     const resultado = await enviarViajeABaseDatos(datosViaje);
 
@@ -168,11 +232,12 @@ export default function Home() {
             onPress: () => {
               setPuntoSeleccionado('');
               setDestinatario('');
+              setDestinatarioId('');
               setObjetoSeleccionado(objetos[0]);
               setEstacionSeleccionada(estaciones[0]);
               setSugerencias([]);
-            }
-          }
+            },
+          },
         ]
       );
     } else {
@@ -185,123 +250,128 @@ export default function Home() {
   const screenWidth = Dimensions.get('window').width;
 
   return (
-    <ScrollView
-  contentContainerStyle={styles.container}
-  keyboardShouldPersistTaps="handled"
->
-  <Text style={styles.title}>Enviar un viaje al Robot</Text>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <Text style={styles.title}>Enviar un viaje al Robot</Text>
 
-  {/* MAPA */}
-  <Text style={styles.label}>Selecciona tu ubicación en el mapa:</Text>
-  <ImageBackground
-    source={require('../assets/01.jpg')}
-    style={{ width: screenWidth - 20, height: 300, marginBottom: 10 }}
-  >
-    {puntos.map((p, i) => (
-      <TouchableOpacity
-        key={i}
-        style={{
-          position: 'absolute',
-          left: p.x,
-          top: p.y,
-          width: 30,
-          height: 30,
-          backgroundColor:
-            puntoSeleccionado === p.nombre ? '#8b0000ff' : 'rgba(255,0,0,0.7)',
-          borderRadius: 15,
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-        onPress={() => setPuntoSeleccionado(p.nombre)}
+      {/* MAPA */}
+      <Text style={styles.label}>Selecciona tu ubicación en el mapa:</Text>
+      <ImageBackground
+        source={require('../assets/01.jpg')}
+        style={{ width: screenWidth - 20, height: 300, marginBottom: 10 }}
       >
-        <Text style={{ color: '#fff', fontSize: 12 }}>📍</Text>
-      </TouchableOpacity>
-    ))}
-  </ImageBackground>
+        {puntos.map((p, i) => (
+          <TouchableOpacity
+            key={`punto-${p.nombre}`}
+            style={{
+              position: 'absolute',
+              left: p.x,
+              top: p.y,
+              width: 30,
+              height: 30,
+              backgroundColor: puntoSeleccionado === p.nombre ? '#8b0000ff' : 'rgba(255,0,0,0.7)',
+              borderRadius: 15,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+            onPress={() => setPuntoSeleccionado(p.nombre)}
+          >
+            <Text style={{ color: '#fff', fontSize: 12 }}>📍</Text>
+          </TouchableOpacity>
+        ))}
+      </ImageBackground>
 
-  {puntoSeleccionado !== '' && (
-    <Text style={{ marginBottom: 10, fontWeight: 'bold' }}>
-      Ubicación seleccionada: {puntoSeleccionado}
-    </Text>
-  )}
+      {puntoSeleccionado !== '' && (
+        <Text style={{ marginBottom: 10, fontWeight: 'bold' }}>
+          Ubicación seleccionada: {puntoSeleccionado}
+        </Text>
+      )}
 
-  {/* OPCIONES */}
-  <CuadrosOpciones
-    data={objetos}
-    seleccion={objetoSeleccionado}
-    setSeleccion={setObjetoSeleccionado}
-    titulo="¿Qué vas a mandar?"
-  />
+      {/* OPCIONES */}
+      <CuadrosOpciones
+        data={objetos}
+        seleccion={objetoSeleccionado}
+        setSeleccion={setObjetoSeleccionado}
+        titulo="¿Qué vas a mandar?"
+      />
 
-  {/* DESTINATARIO */}
-  <Text style={styles.label}>¿A quién se lo vas a mandar?</Text>
-  <TextInput
-    placeholder="Nombre del destinatario"
-    placeholderTextColor="#7a7a7a"
-    style={styles.input}
-    value={destinatario}
-    onChangeText={obtenerSugerencias}
-  />
+      {/* DESTINATARIO */}
+      <Text style={styles.label}>¿A quién se lo vas a mandar?</Text>
+      <TextInput
+        placeholder="Nombre del destinatario"
+        placeholderTextColor="#7a7a7a"
+        style={styles.input}
+        value={destinatario}
+        onChangeText={obtenerSugerencias}
+      />
 
-  {/* LISTA DE SUGERENCIAS corregida */}
-  { sugerencias.length > 0 && (
-  <View
-    style={{
-      maxHeight: 180,
-      marginBottom: -10,
-      borderRadius: 10,
-      backgroundColor: '#fff',
-      borderWidth: 3,
-      borderColor: '#ccc',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.25,
-      shadowRadius: 4,
-      elevation: 5, // sombra Android
-      top: -25,
-      overflow: 'hidden',
-    }}
-  >
-    {sugerencias.map((item, index) => (
+      {/* LISTA DE SUGERENCIAS */}
+      {sugerencias.length > 0 && (
+        <View
+          style={{
+            maxHeight: 180,
+            marginBottom: -10,
+            borderRadius: 10,
+            backgroundColor: '#fff',
+            borderWidth: 3,
+            borderColor: '#ccc',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.25,
+            shadowRadius: 4,
+            elevation: 5,
+            top: -25,
+            overflow: 'hidden',
+          }}
+        >
+          {sugerencias.map((item, index) => (
+            <TouchableOpacity
+              key={`sugerencia-${index}`}
+              onPress={() => {
+                setDestinatario(item.nombre);
+                setDestinatarioId(item.id);
+                setSugerencias([]);
+              }}
+              style={{
+                paddingVertical: 10,
+                paddingHorizontal: 30,
+                backgroundColor: '#2779fdff',
+                borderBottomWidth: index < sugerencias.length - 1 ? 1 : 0,
+                borderBottomColor: '#eee',
+              }}
+              activeOpacity={0.6}
+            >
+              <Text style={{ fontSize: 15, color: '#000000ff' }}>{item.nombre}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* ESTACIÓN */}
+      <CuadrosOpciones
+        data={estaciones}
+        seleccion={estacionSeleccionada}
+        setSeleccion={setEstacionSeleccionada}
+        titulo="¿A dónde lo mandarás?"
+      />
+
+      {/* BOTÓN ENVIAR */}
       <TouchableOpacity
-        key={index}
-        onPress={() => {
-          setDestinatario(item);
-          setSugerencias([]);
-        }}
-        style={{
-          paddingVertical: 10,
-          paddingHorizontal: 30,
-          backgroundColor: '#2779fdff',
-          borderBottomWidth: index < sugerencias.length - 1 ? 1 : 0,
-          borderBottomColor: '#eee',
-        }}
-        activeOpacity={0.6}
+        style={[styles.pedirBtn, { opacity: enviandoViaje ? 0.6 : 1 }]}
+        onPress={enviarViaje}
+        disabled={enviandoViaje}
       >
-        <Text style={{ fontSize: 15, color: '#000000ff' }}>{item}</Text>
+        <Text style={styles.pedirBtnText}>
+          {enviandoViaje ? 'Enviando...' : 'Enviar Viaje'}
+        </Text>
       </TouchableOpacity>
-    ))}
-  </View>
-)}
 
-  <CuadrosOpciones
-    data={estaciones}
-    seleccion={estacionSeleccionada}
-    setSeleccion={setEstacionSeleccionada}
-    titulo="¿A dónde lo mandarás?"
-  />
-
-  {/* BOTÓN ENVIAR */}
-  <TouchableOpacity
-    style={[styles.pedirBtn, { opacity: enviandoViaje ? 0.6 : 1 }]}
-    onPress={enviarViaje}
-    disabled={enviandoViaje}
-  >
-    <Text style={styles.pedirBtnText}>
-      {enviandoViaje ? 'Enviando...' : 'Enviar Viaje'}
-    </Text>
-  </TouchableOpacity>
-</ScrollView>
-
+      {/* BOTÓN ENVIAR SIMULADO */}
+      <TouchableOpacity
+        style={[styles.pedirBtn, { backgroundColor: '#28a745', marginTop: 10 }]}
+        onPress={enviarViajeSimulado}
+      >
+        <Text style={styles.pedirBtnText}>Probar Viaje Simulado</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 }
