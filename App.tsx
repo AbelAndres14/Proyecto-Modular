@@ -16,7 +16,7 @@ import NotificacionesScreen from './screens/Notificaciones';
 import PrivacidadScreen from './screens/Privacidad';
 import RegistroScreen from './screens/Registro';
 import LoginFormScreen from './screens/Login'; // Nueva pantalla de login
-
+import ConfirmacionViaje from './screens/ConfirmacionViaje';
 const Stack = createNativeStackNavigator(); 
 const Tab = createBottomTabNavigator();
 
@@ -114,6 +114,8 @@ export default function App() {
         <Stack.Screen name="Registro" component={RegistroScreen} />
         <Stack.Screen name="Notificaciones" component={NotificacionesScreen} />
         <Stack.Screen name="Privacidad" component={PrivacidadScreen} />
+        <Stack.Screen name="ConfirmacionViaje" component={ConfirmacionViaje} 
+/>
       </Stack.Navigator>
     </NavigationContainer>
   );

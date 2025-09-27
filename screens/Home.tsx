@@ -24,7 +24,6 @@ type CuadrosOpcionesProps = {
   titulo: string;
 };
 
-
 const CuadrosOpciones = ({ data, seleccion, setSeleccion, titulo }: CuadrosOpcionesProps) => {
   return (
     <View style={{ marginBottom: 10 }}>
@@ -97,9 +96,6 @@ const enviarViajeABaseDatos = async (datosViaje: {
 };
 
 export default function Home() {
-
-
-
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const objetos = ['Paquete pequeño', 'Documento importante', 'otro'];
@@ -116,6 +112,15 @@ export default function Home() {
   const [estacionSeleccionada, setEstacionSeleccionada] = useState(estaciones[0]);
   const [puntoSeleccionado, setPuntoSeleccionado] = useState('');
   const [enviandoViaje, setEnviandoViaje] = useState(false);
+  
+  // Estado para guardar los datos del último viaje enviado
+  const [ultimoViajeEnviado, setUltimoViajeEnviado] = useState<{
+    punto: string;
+    objeto: string;
+    destinatario: string;
+    estacion: string;
+    fechaCreacion: string;
+  } | null>(null);
 
   const socketRef = useRef<Socket | null>(null);
 
@@ -132,8 +137,43 @@ export default function Home() {
         socketRef.current?.emit('registrarUsuario', user.id);
       });
 
+      // Listener para recibir notificaciones de viajes
       socketRef.current.on('notificacion', (data) => {
-        Alert.alert(data.titulo, data.mensaje);
+        Alert.alert(
+          data.titulo,
+          data.mensaje,
+          [
+            {
+              text: 'Ver detalles',
+              onPress: () => {
+                // Usar los datos reales del último viaje enviado si existen
+                const datosParaNavegacion = ultimoViajeEnviado ? {
+                  punto: ultimoViajeEnviado.punto,
+                  objeto: ultimoViajeEnviado.objeto,
+                  destinatario: ultimoViajeEnviado.destinatario,
+                  estacion: ultimoViajeEnviado.estacion,
+                  fechaCreacion: ultimoViajeEnviado.fechaCreacion,
+                  remitente: 'Usuario remitente' // Este dato vendría idealmente del backend
+                } : {
+                  // Fallback con datos simulados si no hay datos guardados
+                  punto: 'Ubicación recibida',
+                  objeto: 'Paquete',
+                  destinatario: 'Tu',
+                  estacion: 'Estación asignada',
+                  remitente: 'Usuario remitente',
+                  fechaCreacion: new Date().toISOString()
+                };
+                
+                console.log('Navegando a ConfirmacionViaje con datos:', datosParaNavegacion);
+                navigation.navigate('ConfirmacionViaje', datosParaNavegacion);
+              }
+            },
+            {
+              text: 'Después',
+              style: 'cancel'
+            }
+          ]
+        );
       });
     };
 
@@ -213,9 +253,9 @@ export default function Home() {
       );
 
       const data = await response.json();
-      Alert.alert("✅ Viaje simulado enviado", JSON.stringify(data));
+      Alert.alert("Viaje simulado enviado", JSON.stringify(data));
     } catch (error) {
-      Alert.alert("❌ Error enviando viaje simulado", error instanceof Error ? error.message : "Error desconocido");
+      Alert.alert("Error enviando viaje simulado", error instanceof Error ? error.message : "Error desconocido");
     }
   };
 
@@ -244,48 +284,44 @@ export default function Home() {
       fechaCreacion: new Date().toISOString(),
     };
 
-    console.log('📤 Enviando datos:', datosViaje);
+    console.log('Enviando datos:', datosViaje);
 
     const resultado = await enviarViajeABaseDatos(datosViaje);
 
     if (resultado.success) {
-  Alert.alert(
-  '✅ Viaje enviado exitosamente',
-  `📍 Desde: ${puntoSeleccionado}\n📦 Objeto: ${objetoSeleccionado}\n👤 Para: ${destinatario}\n📬 Estación: ${estacionSeleccionada}`,
-  [
-    {
-      text: 'OK',
-      onPress: () => {
-        // Guardamos los datos antes de limpiar
-        const datosParaConfirmacion = {
-          punto: puntoSeleccionado,
-          objeto: objetoSeleccionado,
-          destinatario,
-          estacion: estacionSeleccionada,
-        };
-
-        // Limpiamos los campos
-        setPuntoSeleccionado('');
-        setDestinatario('');
-        setDestinatarioId('');
-        setObjetoSeleccionado(objetos[0]);
-        setEstacionSeleccionada(estaciones[0]);
-        setSugerencias([]);
-
-        // Navegamos después de un pequeño delay
-        setTimeout(() => {
-          console.log('Navegando a ConfirmacionViaje con datos:', datosParaConfirmacion);
-          navigation.navigate('ConfirmacionViaje', datosParaConfirmacion);
-        }, 100); // 100ms está bien
-      },
-    },
-  ],
-  { cancelable: false }
-);
-
-} else {
-  Alert.alert('❌ Error al enviar viaje', resultado.error);
-}
+      // Guardar los datos del viaje enviado
+      const datosViajeCompletos = {
+        punto: puntoSeleccionado,
+        objeto: objetoSeleccionado,
+        destinatario: destinatario,
+        estacion: estacionSeleccionada,
+        fechaCreacion: datosViaje.fechaCreacion
+      };
+      setUltimoViajeEnviado(datosViajeCompletos);
+      
+      // Confirmación simple para el remitente, SIN navegación
+      Alert.alert(
+        'Viaje enviado exitosamente',
+        `Tu viaje ha sido enviado a ${destinatario}`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Solo limpiar campos, NO navegar
+              setPuntoSeleccionado('');
+              setDestinatario('');
+              setDestinatarioId('');
+              setObjetoSeleccionado(objetos[0]);
+              setEstacionSeleccionada(estaciones[0]);
+              setSugerencias([]);
+            },
+          },
+        ],
+        { cancelable: false }
+      );
+    } else {
+      Alert.alert('Error al enviar viaje', resultado.error);
+    }
     setEnviandoViaje(false);
   };
 
