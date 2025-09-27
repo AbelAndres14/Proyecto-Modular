@@ -20,6 +20,26 @@ import LoginFormScreen from './screens/Login'; // Nueva pantalla de login
 const Stack = createNativeStackNavigator(); 
 const Tab = createBottomTabNavigator();
 
+export type RootStackParamList = {
+  Inicio: undefined;
+  LoginForm: undefined;
+  MainTabs: undefined;
+  Perfil: undefined;
+  Registro: undefined;
+  Notificaciones: undefined;
+  Privacidad: undefined;
+  ConfirmacionViaje: {
+    punto: string;
+    objeto: string;
+    destinatario: string;
+    estacion: string;
+  };
+};
+
+
+
+
+
 function Tabs() {
   return (
     <Tab.Navigator

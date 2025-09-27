@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { styles } from '../styles/HomeScreen.styles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { io, Socket } from 'socket.io-client';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../App';
 
 import {
   View,
@@ -20,6 +23,7 @@ type CuadrosOpcionesProps = {
   setSeleccion: React.Dispatch<React.SetStateAction<string>>;
   titulo: string;
 };
+
 
 const CuadrosOpciones = ({ data, seleccion, setSeleccion, titulo }: CuadrosOpcionesProps) => {
   return (
@@ -93,6 +97,11 @@ const enviarViajeABaseDatos = async (datosViaje: {
 };
 
 export default function Home() {
+
+
+
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   const objetos = ['Paquete pequeño', 'Documento importante', 'otro'];
   const estaciones = ['Estación Norte', 'Estación Sur', 'Estación Este', 'Estación Oeste'];
 
@@ -143,6 +152,21 @@ export default function Home() {
     { x: 450, y: 220, nombre: 'Área de comida' },
   ];
 
+  // MAPEAMOS LOS USUARIOS REGISTRADOS
+  const usuariosRegistrados = [
+    { id: '1', nombre: 'Usuario 1' },
+    { id: '7', nombre: 'Pee Andrés' },
+    { id: '5', nombre: 'Maria Lopez' },
+    // Agrega todos tus usuarios aquí
+  ];
+
+  const obtenerIdUsuario = (nombre: string) => {
+    const usuario = usuariosRegistrados.find(
+      (u) => u.nombre.toLowerCase().trim() === nombre.toLowerCase().trim()
+    );
+    return usuario ? usuario.id : ''; // devuelve ID mapeado o vacío
+  };
+
   const obtenerSugerencias = async (texto: string) => {
     setDestinatario(texto);
 
@@ -157,7 +181,12 @@ export default function Home() {
       const data = await resp.json();
 
       if (data.success && data.usuarios.length > 0) {
-        setSugerencias(data.usuarios);
+        // Mapeamos cada usuario con ID estático
+        const sugerenciasConId = data.usuarios.map((u: { nombre: string }) => ({
+          nombre: u.nombre,
+          id: obtenerIdUsuario(u.nombre) || u.id || '', // si no existe, mantiene su ID original
+        }));
+        setSugerencias(sugerenciasConId);
       } else {
         setSugerencias([]);
         setDestinatarioId('');
@@ -169,7 +198,6 @@ export default function Home() {
     }
   };
 
-  // --- AGREGAR ESTA FUNCIÓN DENTRO DE Home() ---
   const enviarViajeSimulado = async () => {
     try {
       const response = await fetch(
@@ -192,7 +220,6 @@ export default function Home() {
   };
 
   const enviarViaje = async () => {
-    // Validación SIMPLE - sin destinatarioId
     if (!puntoSeleccionado) {
       Alert.alert('Falta ubicación', 'Selecciona tu ubicación en el mapa');
       return;
@@ -202,18 +229,17 @@ export default function Home() {
       Alert.alert('Falta destinatario', 'Escribe el nombre del destinatario');
       return;
     }
-    
+
     if (!estacionSeleccionada) {
       Alert.alert('Falta estación', 'Selecciona una estación');
       return;
     }
-
     setEnviandoViaje(true);
 
     const datosViaje = {
       ubicacion: puntoSeleccionado,
       objeto: objetoSeleccionado,
-      destinatarioId: destinatario, // Enviar el NOMBRE como ID temporalmente
+      destinatarioId: destinatarioId || obtenerIdUsuario(destinatario), // usa ID mapeado
       estacion: estacionSeleccionada,
       fechaCreacion: new Date().toISOString(),
     };
@@ -223,27 +249,43 @@ export default function Home() {
     const resultado = await enviarViajeABaseDatos(datosViaje);
 
     if (resultado.success) {
-      Alert.alert(
-        '✅ Viaje enviado exitosamente',
-        `📍 Desde: ${puntoSeleccionado}\n📦 Objeto: ${objetoSeleccionado}\n👤 Para: ${destinatario}\n📬 Estación: ${estacionSeleccionada}`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setPuntoSeleccionado('');
-              setDestinatario('');
-              setDestinatarioId('');
-              setObjetoSeleccionado(objetos[0]);
-              setEstacionSeleccionada(estaciones[0]);
-              setSugerencias([]);
-            },
-          },
-        ]
-      );
-    } else {
-      Alert.alert('❌ Error al enviar viaje', resultado.error);
-    }
+  Alert.alert(
+  '✅ Viaje enviado exitosamente',
+  `📍 Desde: ${puntoSeleccionado}\n📦 Objeto: ${objetoSeleccionado}\n👤 Para: ${destinatario}\n📬 Estación: ${estacionSeleccionada}`,
+  [
+    {
+      text: 'OK',
+      onPress: () => {
+        // Guardamos los datos antes de limpiar
+        const datosParaConfirmacion = {
+          punto: puntoSeleccionado,
+          objeto: objetoSeleccionado,
+          destinatario,
+          estacion: estacionSeleccionada,
+        };
 
+        // Limpiamos los campos
+        setPuntoSeleccionado('');
+        setDestinatario('');
+        setDestinatarioId('');
+        setObjetoSeleccionado(objetos[0]);
+        setEstacionSeleccionada(estaciones[0]);
+        setSugerencias([]);
+
+        // Navegamos después de un pequeño delay
+        setTimeout(() => {
+          console.log('Navegando a ConfirmacionViaje con datos:', datosParaConfirmacion);
+          navigation.navigate('ConfirmacionViaje', datosParaConfirmacion);
+        }, 100); // 100ms está bien
+      },
+    },
+  ],
+  { cancelable: false }
+);
+
+} else {
+  Alert.alert('❌ Error al enviar viaje', resultado.error);
+}
     setEnviandoViaje(false);
   };
 
@@ -259,7 +301,7 @@ export default function Home() {
         source={require('../assets/01.jpg')}
         style={{ width: screenWidth - 20, height: 300, marginBottom: 10 }}
       >
-        {puntos.map((p, i) => (
+        {puntos.map((p) => (
           <TouchableOpacity
             key={`punto-${p.nombre}`}
             style={{
@@ -328,7 +370,7 @@ export default function Home() {
               key={`sugerencia-${index}`}
               onPress={() => {
                 setDestinatario(item.nombre);
-                setDestinatarioId(item.id);
+                setDestinatarioId(item.id); // usa ID mapeado
                 setSugerencias([]);
               }}
               style={{
