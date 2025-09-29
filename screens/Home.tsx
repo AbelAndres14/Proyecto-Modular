@@ -197,7 +197,7 @@ export default function Home() {
     { id: '7', nombre: 'Pee Andrés' },
     { id: '14', nombre: 'Abel Andrés Hernández' },
     { id: '15', nombre: 'Isaai Alejandro Vazquez Vazquez' },
-    { id: '15', nombre: 'Brenda Aldrete' },
+    { id: '16', nombre: 'Brenda Aldrete' },
     // Agrega todos tus usuarios aquí
   ];
 
