@@ -149,6 +149,24 @@ export default function RegistroScreen({ navigation }: any) {
         throw new Error('Respuesta inválida del servidor');
       }
 
+      try {
+        const response = await fetch(
+          "https://5aa392a65401.ngrok-free.app/registrar_rostro",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+              id_usuario: 24,
+              imagen_base64: photoBase64
+              }),
+            }
+        );
+      
+        const data = await response.json();
+      } catch (error) {
+        Alert.alert("No reconoce ningun rostro", error instanceof Error ? error.message : "Error desconocido");
+      }
+
       if (data.success) {
         Alert.alert(
           'Registro exitoso', 

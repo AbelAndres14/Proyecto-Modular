@@ -99,7 +99,7 @@ export default function Home() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const objetos = ['Paquete pequeño', 'Documento importante', 'otro'];
-  const estaciones = ['Estación Norte', 'Estación Sur', 'Estación Este', 'Estación Oeste'];
+  const estaciones = ['Estacion 1', 'Estacion 2', 'Estacion 3', 'Estacion 4'];
 
   const [ubicacion, setUbicacion] = useState('');
   const [objetoSeleccionado, setObjetoSeleccionado] = useState(objetos[0]);
@@ -185,18 +185,19 @@ export default function Home() {
   }, []);
 
   const puntos = [
-    { x: 50, y: 100, nombre: 'Módulo A' },
-    { x: 150, y: 180, nombre: 'Módulo B' },
-    { x: 250, y: 120, nombre: 'Auditorio' },
-    { x: 350, y: 300, nombre: 'Biblioteca CID' },
-    { x: 450, y: 220, nombre: 'Área de comida' },
+    { x: 70, y: 80, nombre: 'Estacion 1' },
+    { x: 90, y: 100, nombre: 'Estacion 2' },
+    { x: 160, y: 10, nombre: 'Estacion 3' },
+    { x: 180, y: 30, nombre: 'Estacion 4' },
   ];
 
   // MAPEAMOS LOS USUARIOS REGISTRADOS
   const usuariosRegistrados = [
     { id: '1', nombre: 'Usuario 1' },
     { id: '7', nombre: 'Pee Andrés' },
-    { id: '5', nombre: 'Maria Lopez' },
+    { id: '14', nombre: 'Abel Andrés Hernández' },
+    { id: '15', nombre: 'Isaai Alejandro Vazquez Vazquez' },
+    { id: '15', nombre: 'Brenda Aldrete' },
     // Agrega todos tus usuarios aquí
   ];
 
@@ -238,6 +239,7 @@ export default function Home() {
     }
   };
 
+
   const enviarViajeSimulado = async () => {
     try {
       const response = await fetch(
@@ -260,70 +262,92 @@ export default function Home() {
   };
 
   const enviarViaje = async () => {
-    if (!puntoSeleccionado) {
-      Alert.alert('Falta ubicación', 'Selecciona tu ubicación en el mapa');
-      return;
-    }
-    
-    if (!destinatario.trim()) {
-      Alert.alert('Falta destinatario', 'Escribe el nombre del destinatario');
-      return;
-    }
+  if (!puntoSeleccionado) {
+    Alert.alert("Falta ubicación", "Selecciona tu ubicación en el mapa");
+    return;
+  }
 
-    if (!estacionSeleccionada) {
-      Alert.alert('Falta estación', 'Selecciona una estación');
-      return;
-    }
-    setEnviandoViaje(true);
+  if (!destinatario.trim()) {
+    Alert.alert("Falta destinatario", "Escribe el nombre del destinatario");
+    return;
+  }
 
-    const datosViaje = {
-      ubicacion: puntoSeleccionado,
-      objeto: objetoSeleccionado,
-      destinatarioId: destinatarioId || obtenerIdUsuario(destinatario), // usa ID mapeado
-      estacion: estacionSeleccionada,
-      fechaCreacion: new Date().toISOString(),
-    };
+  if (!estacionSeleccionada) {
+    Alert.alert("Falta estación", "Selecciona una estación");
+    return;
+  }
+  setEnviandoViaje(true);
 
-    console.log('Enviando datos:', datosViaje);
-
-    const resultado = await enviarViajeABaseDatos(datosViaje);
-
-    if (resultado.success) {
-      // Guardar los datos del viaje enviado
-      const datosViajeCompletos = {
-        punto: puntoSeleccionado,
-        objeto: objetoSeleccionado,
-        destinatario: destinatario,
-        estacion: estacionSeleccionada,
-        fechaCreacion: datosViaje.fechaCreacion
-      };
-      setUltimoViajeEnviado(datosViajeCompletos);
-      
-      // Confirmación simple para el remitente, SIN navegación
-      Alert.alert(
-        'Viaje enviado exitosamente',
-        `Tu viaje ha sido enviado a ${destinatario}`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Solo limpiar campos, NO navegar
-              setPuntoSeleccionado('');
-              setDestinatario('');
-              setDestinatarioId('');
-              setObjetoSeleccionado(objetos[0]);
-              setEstacionSeleccionada(estaciones[0]);
-              setSugerencias([]);
-            },
-          },
-        ],
-        { cancelable: false }
-      );
-    } else {
-      Alert.alert('Error al enviar viaje', resultado.error);
-    }
-    setEnviandoViaje(false);
+  const datosViaje = {
+    ubicacion: puntoSeleccionado,
+    objeto: objetoSeleccionado,
+    destinatarioId: destinatarioId || obtenerIdUsuario(destinatario),
+    estacion: estacionSeleccionada,
+    fechaCreacion: new Date().toISOString(),
   };
+
+  console.log("Enviando datos:", datosViaje);
+
+  const resultado = await enviarViajeABaseDatos(datosViaje);
+
+  if (resultado.success) {
+    // Guardar último viaje
+    const datosViajeCompletos = {
+      punto: puntoSeleccionado,
+      objeto: objetoSeleccionado,
+      destinatario: destinatario,
+      estacion: estacionSeleccionada,
+      fechaCreacion: datosViaje.fechaCreacion,
+    };
+    setUltimoViajeEnviado(datosViajeCompletos);
+
+    // 🚀 También enviar al endpoint de ngrok con nombres de estación
+    try {
+      const response = await fetch(
+        "https://pretyphoid-unignoring-tisha.ngrok-free.dev/nuevo-viaje",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            origen2: puntoSeleccionado, // aquí puedes cambiar si tienes otro origen dinámico
+            destino2: estacionSeleccionada,
+          }),
+        }
+      );
+
+      const data = await response.json();
+      console.log("✅ Viaje enviado al ngrok:", data);
+    } catch (error) {
+      console.error(
+        "❌ Error enviando viaje al ngrok:",
+        error instanceof Error ? error.message : "Error desconocido"
+      );
+    }
+
+    Alert.alert(
+      "Viaje enviado exitosamente",
+      `Tu viaje ha sido enviado a ${destinatario}`,
+      [
+        {
+          text: "OK",
+          onPress: () => {
+            setPuntoSeleccionado("");
+            setDestinatario("");
+            setDestinatarioId("");
+            setObjetoSeleccionado(objetos[0]);
+            setEstacionSeleccionada(estaciones[0]);
+            setSugerencias([]);
+          },
+        },
+      ],
+      { cancelable: false }
+    );
+  } else {
+    Alert.alert("Error al enviar viaje", resultado.error);
+  }
+  setEnviandoViaje(false);
+};
+
 
   const screenWidth = Dimensions.get('window').width;
 
@@ -334,8 +358,8 @@ export default function Home() {
       {/* MAPA */}
       <Text style={styles.label}>Selecciona tu ubicación en el mapa:</Text>
       <ImageBackground
-        source={require('../assets/01.jpg')}
-        style={{ width: screenWidth - 20, height: 300, marginBottom: 10 }}
+        source={require('../assets/02.png')}
+        style={{ width: screenWidth - 20, height: 200, marginBottom: 10 }}
       >
         {puntos.map((p) => (
           <TouchableOpacity
