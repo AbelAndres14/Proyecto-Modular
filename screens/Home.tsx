@@ -192,12 +192,21 @@ export default function Home() {
   ];
 
   // MAPEAMOS LOS USUARIOS REGISTRADOS
-  const usuariosRegistrados = [
-    { id: '1', nombre: 'Usuario 1' },
-    { id: '7', nombre: 'Pee Andrés' },
-    { id: '14', nombre: 'Abel Andrés Hernández' },
-    { id: '15', nombre: 'Isaai Alejandro Vazquez Vazquez' },
-    { id: '16', nombre: 'Brenda Aldrete' },
+  /*const usuariosRegistrados = [
+    { id: '43', nombre: 'Isaai Alejandro' },
+    { id: '40', nombre: 'Abel Andres Hernandez' },  
+    { id: '41', nombre: 'Brenda Aldrete' },
+{ id: '44', nombre: 'Brenda Leal' },
+{ id: '45', nombre: 'Hugo Lopez' },
+{ id: '46', nombre: 'Susana Leal' },
+{ id: '47', nombre: 'Susana Aldrete' },
+{ id: '48', nombre: 'IBrenda Susana' },
+{ id: '49', nombre: 'Abel Lopez' },
+{ id: '50', nombre: 'Isaai Perez' },
+{ id: '51', nombre: 'Isaai Aldrete' },
+{ id: '52', nombre: 'Susi Aldrete' },
+{ id: '53', nombre: 'Isaai V' },
+
     // Agrega todos tus usuarios aquí
   ];
 
@@ -207,59 +216,36 @@ export default function Home() {
     );
     return usuario ? usuario.id : ''; // devuelve ID mapeado o vacío
   };
-
+*/
   const obtenerSugerencias = async (texto: string) => {
-    setDestinatario(texto);
+  setDestinatario(texto);
 
-    if (texto.length < 2) {
-      setSugerencias([]);
-      setDestinatarioId('');
-      return;
-    }
+  if (texto.length < 2) {
+    setSugerencias([]);
+    setDestinatarioId('');
+    return;
+  }
 
-    try {
-      const resp = await fetch(`https://apiabel.teamsystem.space/api/users/suggest?q=${texto}`);
-      const data = await resp.json();
-
-      if (data.success && data.usuarios.length > 0) {
-        // Mapeamos cada usuario con ID estático
-        const sugerenciasConId = data.usuarios.map((u: { nombre: string }) => ({
-          nombre: u.nombre,
-          id: obtenerIdUsuario(u.nombre) || u.id || '', // si no existe, mantiene su ID original
-        }));
-        setSugerencias(sugerenciasConId);
-      } else {
-        setSugerencias([]);
-        setDestinatarioId('');
-      }
-    } catch (err) {
-      console.error(err);
+  try {
+    const resp = await fetch(`https://apiabel.teamsystem.space/api/users/suggest?q=${texto}`);
+    const data = await resp.json();
+console.log("Respuesta cruda de sugerencias:", data);
+    if (data.success && data.usuarios.length > 0) {
+      // Guarda directamente usuarios con su ID de la API
+      setSugerencias(data.usuarios.map((u: { nombre: string; id: string }) => ({
+        nombre: u.nombre,
+        id: u.id,
+      })));
+    } else {
       setSugerencias([]);
       setDestinatarioId('');
     }
-  };
-
-
-  const enviarViajeSimulado = async () => {
-    try {
-      const response = await fetch(
-        "https://pretyphoid-unignoring-tisha.ngrok-free.dev/nuevo-viaje",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            origen: 1,
-            destino: 2,
-          }),
-        }
-      );
-
-      const data = await response.json();
-      Alert.alert("Viaje simulado enviado", JSON.stringify(data));
-    } catch (error) {
-      Alert.alert("Error enviando viaje simulado", error instanceof Error ? error.message : "Error desconocido");
-    }
-  };
+  } catch (err) {
+    console.error(err);
+    setSugerencias([]);
+    setDestinatarioId('');
+  }
+};
 
   const enviarViaje = async () => {
   if (!puntoSeleccionado) {
@@ -279,12 +265,12 @@ export default function Home() {
   setEnviandoViaje(true);
 
   const datosViaje = {
-    ubicacion: puntoSeleccionado,
-    objeto: objetoSeleccionado,
-    destinatarioId: destinatarioId || obtenerIdUsuario(destinatario),
-    estacion: estacionSeleccionada,
-    fechaCreacion: new Date().toISOString(),
-  };
+  ubicacion: puntoSeleccionado,
+  objeto: objetoSeleccionado,
+  destinatarioId, // ya es dinámico
+  estacion: estacionSeleccionada,
+  fechaCreacion: new Date().toISOString(),
+};
 
   console.log("Enviando datos:", datosViaje);
 
@@ -430,7 +416,7 @@ export default function Home() {
               key={`sugerencia-${index}`}
               onPress={() => {
                 setDestinatario(item.nombre);
-                setDestinatarioId(item.id); // usa ID mapeado
+                setDestinatarioId(item.id); // ahora siempre dinámico
                 setSugerencias([]);
               }}
               style={{
@@ -467,13 +453,7 @@ export default function Home() {
         </Text>
       </TouchableOpacity>
 
-      {/* BOTÓN ENVIAR SIMULADO */}
-      <TouchableOpacity
-        style={[styles.pedirBtn, { backgroundColor: '#28a745', marginTop: 10 }]}
-        onPress={enviarViajeSimulado}
-      >
-        <Text style={styles.pedirBtnText}>Probar Viaje Simulado</Text>
-      </TouchableOpacity>
+    
     </ScrollView>
   );
 }

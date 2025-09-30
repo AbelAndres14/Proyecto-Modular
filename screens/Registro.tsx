@@ -149,14 +149,15 @@ export default function RegistroScreen({ navigation }: any) {
         throw new Error('Respuesta inválida del servidor');
       }
 
-      try {
+      
+    /*  try {
         const response = await fetch(
-          "https://5aa392a65401.ngrok-free.app/registrar_rostro",
+          "https://pyrophoric-tribrachial-roxana.ngrok-free.dev/registrar_rostro",
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-              id_usuario: 24,
+              id_usuario: 51,
               imagen_base64: photoBase64
               }),
             }
@@ -165,7 +166,31 @@ export default function RegistroScreen({ navigation }: any) {
         const data = await response.json();
       } catch (error) {
         Alert.alert("No reconoce ningun rostro", error instanceof Error ? error.message : "Error desconocido");
+      } */
+
+         if (data.success && data.usuario && data.usuario.id) {
+  try {
+    const response = await fetch(
+      "https://pyrophoric-tribrachial-roxana.ngrok-free.dev/registrar_rostro",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_usuario: data.usuario.id,   // ✅ ID dinámico desde el backend
+          imagen_base64: photoBase64,
+        }),
       }
+    );
+
+    const rostroResponse = await response.json();
+    console.log("Respuesta registrar_rostro:", rostroResponse);
+  } catch (error) {
+    Alert.alert(
+      "Error al registrar rostro",
+      error instanceof Error ? error.message : "Error desconocido"
+    );
+  }
+}
 
       if (data.success) {
         Alert.alert(
