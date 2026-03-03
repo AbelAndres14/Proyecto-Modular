@@ -130,7 +130,7 @@ export default function Home() {
       if (!userString) return;
       const user = JSON.parse(userString);
 
-      socketRef.current = io('https://apiabel.teamsystem.space');
+      socketRef.current = io('https://api.abelandres.dpdns.org/');
 
       socketRef.current.on('connect', () => {
         console.log('Conectado al servidor:', socketRef.current?.id);

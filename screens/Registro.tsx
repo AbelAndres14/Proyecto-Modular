@@ -129,7 +129,7 @@ export default function RegistroScreen({ navigation }: any) {
         tamaño_rostro_kb: userData.rostro ? Math.round(userData.rostro.length / 1024) : 0
       });
       
-      const response = await fetch('https://apiabel.teamsystem.space/api/usuario/', {
+      const response = await fetch('https://api.abelandres.dpdns.org/api/usuario/', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

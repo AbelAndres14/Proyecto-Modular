@@ -18,7 +18,7 @@ const handleLogin = async () => {
 
   try {
     // ✅ URL corregida y sin código de estudiante
-    const response = await fetch('https://apiabel.teamsystem.space/api/usuario/login', {
+    const response = await fetch('https://api.abelandres.dpdns.org/api/usuario/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ correo, password })
