@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { styles } from '../styles/HomeScreen.styles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { io, Socket } from 'socket.io-client';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
+import { useSocket } from './SocketContext'; // ✅ contexto global
 
 import {
   View,
@@ -24,46 +24,41 @@ type CuadrosOpcionesProps = {
   titulo: string;
 };
 
-const CuadrosOpciones = ({ data, seleccion, setSeleccion, titulo }: CuadrosOpcionesProps) => {
-  return (
-    <View style={{ marginBottom: 10 }}>
-      <Text style={styles.label}>{titulo}</Text>
-      <View
-        style={{
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-        }}
-      >
-        {data.map((item) => (
-          <TouchableOpacity
-            key={`${titulo}-${item}`}
-            onPress={() => {
-              setSeleccion(seleccion === item ? '' : item);
-            }}
-            style={{
-              backgroundColor: seleccion === item ? '#8b0000ff' : '#007BFF55',
-              borderColor: '#ffffff',
-              borderWidth: 2,
-              paddingVertical: 6,
-              paddingHorizontal: 12,
-              marginVertical: 5,
-              borderRadius: 10,
-              width: '47%',
-              alignItems: 'center',
-            }}
-          >
-            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>
-              {item}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
+type ViajeEnviado = {
+  punto: string;
+  objeto: string;
+  destinatario: string;
+  estacion: string;
+  fechaCreacion: string;
 };
 
-// Función para enviar datos a la base de datos
+const CuadrosOpciones = ({ data, seleccion, setSeleccion, titulo }: CuadrosOpcionesProps) => (
+  <View style={{ marginBottom: 10 }}>
+    <Text style={styles.label}>{titulo}</Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+      {data.map((item) => (
+        <TouchableOpacity
+          key={`${titulo}-${item}`}
+          onPress={() => setSeleccion(seleccion === item ? '' : item)}
+          style={{
+            backgroundColor: seleccion === item ? '#8b0000ff' : '#007BFF55',
+            borderColor: '#ffffff',
+            borderWidth: 2,
+            paddingVertical: 6,
+            paddingHorizontal: 12,
+            marginVertical: 5,
+            borderRadius: 10,
+            width: '47%',
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>{item}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  </View>
+);
+
 const enviarViajeABaseDatos = async (datosViaje: {
   ubicacion: string;
   objeto: string;
@@ -72,117 +67,39 @@ const enviarViajeABaseDatos = async (datosViaje: {
   fechaCreacion: string;
 }) => {
   try {
-    const API_URL = 'https://apiabel.teamsystem.space/api/viajes';
-
-    const response = await fetch(API_URL, {
+    const response = await fetch('https://api.abelandres.dpdns.org/api/viajes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(datosViaje),
     });
-
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Error HTTP: ${response.status} - ${errorText}`);
     }
-
     const resultado = await response.json();
     return { success: true, data: resultado };
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Error desconocido',
-    };
+    return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' };
   }
 };
 
 export default function Home() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
+  // ✅ Viaje recibido viene del contexto global — funciona en cualquier pantalla
+  const { viajeRecibidoPendiente } = useSocket();
+
   const objetos = ['Paquete pequeño', 'Documento importante', 'otro'];
   const estaciones = ['Estacion 1', 'Estacion 2', 'Estacion 3', 'Estacion 4'];
 
-  const [ubicacion, setUbicacion] = useState('');
   const [objetoSeleccionado, setObjetoSeleccionado] = useState(objetos[0]);
-
-  // NUEVOS ESTADOS PARA DESTINATARIO CON ID
   const [destinatario, setDestinatario] = useState('');
   const [destinatarioId, setDestinatarioId] = useState<string>('');
   const [sugerencias, setSugerencias] = useState<{ id: string; nombre: string }[]>([]);
-
   const [estacionSeleccionada, setEstacionSeleccionada] = useState(estaciones[0]);
   const [puntoSeleccionado, setPuntoSeleccionado] = useState('');
   const [enviandoViaje, setEnviandoViaje] = useState(false);
-  
-  // Estado para guardar los datos del último viaje enviado
-  const [ultimoViajeEnviado, setUltimoViajeEnviado] = useState<{
-    punto: string;
-    objeto: string;
-    destinatario: string;
-    estacion: string;
-    fechaCreacion: string;
-  } | null>(null);
-
-  const socketRef = useRef<Socket | null>(null);
-
-  useEffect(() => {
-    const conectarSocket = async () => {
-      const userString = await AsyncStorage.getItem('user');
-      if (!userString) return;
-      const user = JSON.parse(userString);
-
-      socketRef.current = io('https://api.abelandres.dpdns.org/');
-
-      socketRef.current.on('connect', () => {
-        console.log('Conectado al servidor:', socketRef.current?.id);
-        socketRef.current?.emit('registrarUsuario', user.id);
-      });
-
-      // Listener para recibir notificaciones de viajes
-      socketRef.current.on('notificacion', (data) => {
-        Alert.alert(
-          data.titulo,
-          data.mensaje,
-          [
-            {
-              text: 'Ver detalles',
-              onPress: () => {
-                // Usar los datos reales del último viaje enviado si existen
-                const datosParaNavegacion = ultimoViajeEnviado ? {
-                  punto: ultimoViajeEnviado.punto,
-                  objeto: ultimoViajeEnviado.objeto,
-                  destinatario: ultimoViajeEnviado.destinatario,
-                  estacion: ultimoViajeEnviado.estacion,
-                  fechaCreacion: ultimoViajeEnviado.fechaCreacion,
-                  remitente: 'Usuario remitente' // Este dato vendría idealmente del backend
-                } : {
-                  // Fallback con datos simulados si no hay datos guardados
-                  punto: 'Ubicación recibida',
-                  objeto: 'Paquete',
-                  destinatario: 'Tu',
-                  estacion: 'Estación asignada',
-                  remitente: 'Usuario remitente',
-                  fechaCreacion: new Date().toISOString()
-                };
-                
-                console.log('Navegando a ConfirmacionViaje con datos:', datosParaNavegacion);
-                navigation.navigate('ConfirmacionViaje', datosParaNavegacion);
-              }
-            },
-            {
-              text: 'Después',
-              style: 'cancel'
-            }
-          ]
-        );
-      });
-    };
-
-    conectarSocket();
-
-    return () => {
-      socketRef.current?.disconnect();
-    };
-  }, []);
+  const [ultimoViajeEnviado, setUltimoViajeEnviado] = useState<ViajeEnviado | null>(null);
 
   const puntos = [
     { x: 70, y: 80, nombre: 'Estacion 1' },
@@ -191,269 +108,169 @@ export default function Home() {
     { x: 180, y: 30, nombre: 'Estacion 4' },
   ];
 
-  // MAPEAMOS LOS USUARIOS REGISTRADOS
-  /*const usuariosRegistrados = [
-    { id: '43', nombre: 'Isaai Alejandro' },
-    { id: '40', nombre: 'Abel Andres Hernandez' },  
-    { id: '41', nombre: 'Brenda Aldrete' },
-{ id: '44', nombre: 'Brenda Leal' },
-{ id: '45', nombre: 'Hugo Lopez' },
-{ id: '46', nombre: 'Susana Leal' },
-{ id: '47', nombre: 'Susana Aldrete' },
-{ id: '48', nombre: 'IBrenda Susana' },
-{ id: '49', nombre: 'Abel Lopez' },
-{ id: '50', nombre: 'Isaai Perez' },
-{ id: '51', nombre: 'Isaai Aldrete' },
-{ id: '52', nombre: 'Susi Aldrete' },
-{ id: '53', nombre: 'Isaai V' },
-
-    // Agrega todos tus usuarios aquí
-  ];
-
-  const obtenerIdUsuario = (nombre: string) => {
-    const usuario = usuariosRegistrados.find(
-      (u) => u.nombre.toLowerCase().trim() === nombre.toLowerCase().trim()
-    );
-    return usuario ? usuario.id : ''; // devuelve ID mapeado o vacío
-  };
-*/
   const obtenerSugerencias = async (texto: string) => {
-  setDestinatario(texto);
-
-  if (texto.length < 2) {
-    setSugerencias([]);
-    setDestinatarioId('');
-    return;
-  }
-
-  try {
-    const resp = await fetch(`https://apiabel.teamsystem.space/api/users/suggest?q=${texto}`);
-    const data = await resp.json();
-console.log("Respuesta cruda de sugerencias:", data);
-    if (data.success && data.usuarios.length > 0) {
-      // Guarda directamente usuarios con su ID de la API
-      setSugerencias(data.usuarios.map((u: { nombre: string; id: string }) => ({
-        nombre: u.nombre,
-        id: u.id,
-      })));
-    } else {
-      setSugerencias([]);
-      setDestinatarioId('');
-    }
-  } catch (err) {
-    console.error(err);
-    setSugerencias([]);
-    setDestinatarioId('');
-  }
-};
+    setDestinatario(texto);
+    if (texto.length < 2) { setSugerencias([]); setDestinatarioId(''); return; }
+    try {
+      const resp = await fetch(`https://api.abelandres.dpdns.org/api/users/suggest?q=${texto}`);
+      const data = await resp.json();
+      if (data.success && data.usuarios.length > 0) {
+        setSugerencias(data.usuarios.map((u: { nombre: string; id: string }) => ({ nombre: u.nombre, id: u.id })));
+      } else { setSugerencias([]); setDestinatarioId(''); }
+    } catch (err) { console.error(err); setSugerencias([]); setDestinatarioId(''); }
+  };
 
   const enviarViaje = async () => {
-  if (!puntoSeleccionado) {
-    Alert.alert("Falta ubicación", "Selecciona tu ubicación en el mapa");
-    return;
-  }
+    if (!puntoSeleccionado) { Alert.alert("Falta ubicación", "Selecciona tu ubicación en el mapa"); return; }
+    if (!destinatario.trim()) { Alert.alert("Falta destinatario", "Escribe el nombre del destinatario"); return; }
+    if (!estacionSeleccionada) { Alert.alert("Falta estación", "Selecciona una estación"); return; }
 
-  if (!destinatario.trim()) {
-    Alert.alert("Falta destinatario", "Escribe el nombre del destinatario");
-    return;
-  }
-
-  if (!estacionSeleccionada) {
-    Alert.alert("Falta estación", "Selecciona una estación");
-    return;
-  }
-  setEnviandoViaje(true);
-
-  const datosViaje = {
-  ubicacion: puntoSeleccionado,
-  objeto: objetoSeleccionado,
-  destinatarioId, // ya es dinámico
-  estacion: estacionSeleccionada,
-  fechaCreacion: new Date().toISOString(),
-};
-
-  console.log("Enviando datos:", datosViaje);
-
-  const resultado = await enviarViajeABaseDatos(datosViaje);
-
-  if (resultado.success) {
-    // Guardar último viaje
-    const datosViajeCompletos = {
-      punto: puntoSeleccionado,
+    setEnviandoViaje(true);
+    const datosViaje = {
+      ubicacion: puntoSeleccionado,
       objeto: objetoSeleccionado,
-      destinatario: destinatario,
+      destinatarioId,
       estacion: estacionSeleccionada,
-      fechaCreacion: datosViaje.fechaCreacion,
+      fechaCreacion: new Date().toISOString(),
     };
-    setUltimoViajeEnviado(datosViajeCompletos);
+    const resultado = await enviarViajeABaseDatos(datosViaje);
 
-    // 🚀 También enviar al endpoint de ngrok con nombres de estación
-    try {
-      const response = await fetch(
-        "https://pretyphoid-unignoring-tisha.ngrok-free.dev/nuevo-viaje",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            origen2: puntoSeleccionado, // aquí puedes cambiar si tienes otro origen dinámico
-            destino2: estacionSeleccionada,
-          }),
-        }
-      );
-
-      const data = await response.json();
-      console.log("✅ Viaje enviado al ngrok:", data);
-    } catch (error) {
-      console.error(
-        "❌ Error enviando viaje al ngrok:",
-        error instanceof Error ? error.message : "Error desconocido"
-      );
+    if (resultado.success) {
+      setUltimoViajeEnviado({
+        punto: puntoSeleccionado,
+        objeto: objetoSeleccionado,
+        destinatario,
+        estacion: estacionSeleccionada,
+        fechaCreacion: datosViaje.fechaCreacion,
+      });
+      setPuntoSeleccionado(""); setDestinatario(""); setDestinatarioId("");
+      setObjetoSeleccionado(objetos[0]); setEstacionSeleccionada(estaciones[0]); setSugerencias([]);
+      Alert.alert("Viaje enviado exitosamente", `Tu viaje ha sido enviado a ${destinatario}`);
+    } else {
+      Alert.alert("Error al enviar viaje", resultado.error);
     }
-
-    Alert.alert(
-      "Viaje enviado exitosamente",
-      `Tu viaje ha sido enviado a ${destinatario}`,
-      [
-        {
-          text: "OK",
-          onPress: () => {
-            setPuntoSeleccionado("");
-            setDestinatario("");
-            setDestinatarioId("");
-            setObjetoSeleccionado(objetos[0]);
-            setEstacionSeleccionada(estaciones[0]);
-            setSugerencias([]);
-          },
-        },
-      ],
-      { cancelable: false }
-    );
-  } else {
-    Alert.alert("Error al enviar viaje", resultado.error);
-  }
-  setEnviandoViaje(false);
-};
-
+    setEnviandoViaje(false);
+  };
 
   const screenWidth = Dimensions.get('window').width;
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Enviar un viaje al Robot</Text>
+    <View style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <Text style={styles.title}>Enviar un viaje al Robot</Text>
 
-      {/* MAPA */}
-      <Text style={styles.label}>Selecciona tu ubicación en el mapa:</Text>
-      <ImageBackground
-        source={require('../assets/02.png')}
-        style={{ width: screenWidth - 20, height: 200, marginBottom: 10 }}
-      >
-        {puntos.map((p) => (
-          <TouchableOpacity
-            key={`punto-${p.nombre}`}
-            style={{
-              position: 'absolute',
-              left: p.x,
-              top: p.y,
-              width: 30,
-              height: 30,
-              backgroundColor: puntoSeleccionado === p.nombre ? '#8b0000ff' : 'rgba(255,0,0,0.7)',
-              borderRadius: 15,
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-            onPress={() => setPuntoSeleccionado(p.nombre)}
-          >
-            <Text style={{ color: '#fff', fontSize: 12 }}>📍</Text>
-          </TouchableOpacity>
-        ))}
-      </ImageBackground>
-
-      {puntoSeleccionado !== '' && (
-        <Text style={{ marginBottom: 10, fontWeight: 'bold' }}>
-          Ubicación seleccionada: {puntoSeleccionado}
-        </Text>
-      )}
-
-      {/* OPCIONES */}
-      <CuadrosOpciones
-        data={objetos}
-        seleccion={objetoSeleccionado}
-        setSeleccion={setObjetoSeleccionado}
-        titulo="¿Qué vas a mandar?"
-      />
-
-      {/* DESTINATARIO */}
-      <Text style={styles.label}>¿A quién se lo vas a mandar?</Text>
-      <TextInput
-        placeholder="Nombre del destinatario"
-        placeholderTextColor="#7a7a7a"
-        style={styles.input}
-        value={destinatario}
-        onChangeText={obtenerSugerencias}
-      />
-
-      {/* LISTA DE SUGERENCIAS */}
-      {sugerencias.length > 0 && (
-        <View
-          style={{
-            maxHeight: 180,
-            marginBottom: -10,
-            borderRadius: 10,
-            backgroundColor: '#fff',
-            borderWidth: 3,
-            borderColor: '#ccc',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: 0.25,
-            shadowRadius: 4,
-            elevation: 5,
-            top: -25,
-            overflow: 'hidden',
-          }}
+        <Text style={styles.label}>Selecciona tu ubicación en el mapa:</Text>
+        <ImageBackground
+          source={require('../assets/02.png')}
+          style={{ width: screenWidth - 20, height: 200, marginBottom: 10 }}
         >
-          {sugerencias.map((item, index) => (
+          {puntos.map((p) => (
             <TouchableOpacity
-              key={`sugerencia-${index}`}
-              onPress={() => {
-                setDestinatario(item.nombre);
-                setDestinatarioId(item.id); // ahora siempre dinámico
-                setSugerencias([]);
-              }}
+              key={`punto-${p.nombre}`}
               style={{
-                paddingVertical: 10,
-                paddingHorizontal: 30,
-                backgroundColor: '#2779fdff',
-                borderBottomWidth: index < sugerencias.length - 1 ? 1 : 0,
-                borderBottomColor: '#eee',
+                position: 'absolute', left: p.x, top: p.y,
+                width: 30, height: 30,
+                backgroundColor: puntoSeleccionado === p.nombre ? '#8b0000ff' : 'rgba(255,0,0,0.7)',
+                borderRadius: 15, justifyContent: 'center', alignItems: 'center',
               }}
-              activeOpacity={0.6}
+              onPress={() => setPuntoSeleccionado(p.nombre)}
             >
-              <Text style={{ fontSize: 15, color: '#000000ff' }}>{item.nombre}</Text>
+              <Text style={{ color: '#fff', fontSize: 12 }}>📍</Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ImageBackground>
+
+        {puntoSeleccionado !== '' && (
+          <Text style={{ marginBottom: 10, fontWeight: 'bold' }}>
+            Ubicación seleccionada: {puntoSeleccionado}
+          </Text>
+        )}
+
+        <CuadrosOpciones data={objetos} seleccion={objetoSeleccionado} setSeleccion={setObjetoSeleccionado} titulo="¿Qué vas a mandar?" />
+
+        <Text style={styles.label}>¿A quién se lo vas a mandar?</Text>
+        <TextInput
+          placeholder="Nombre del destinatario"
+          placeholderTextColor="#7a7a7a"
+          style={styles.input}
+          value={destinatario}
+          onChangeText={obtenerSugerencias}
+        />
+
+        {sugerencias.length > 0 && (
+          <View style={{
+            maxHeight: 180, marginBottom: -10, borderRadius: 10,
+            backgroundColor: '#fff', borderWidth: 3, borderColor: '#ccc',
+            shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.25, shadowRadius: 4, elevation: 5, top: -25, overflow: 'hidden',
+          }}>
+            {sugerencias.map((item, index) => (
+              <TouchableOpacity
+                key={`sugerencia-${index}`}
+                onPress={() => { setDestinatario(item.nombre); setDestinatarioId(item.id); setSugerencias([]); }}
+                style={{
+                  paddingVertical: 10, paddingHorizontal: 30, backgroundColor: '#2779fdff',
+                  borderBottomWidth: index < sugerencias.length - 1 ? 1 : 0, borderBottomColor: '#eee',
+                }}
+                activeOpacity={0.6}
+              >
+                <Text style={{ fontSize: 15, color: '#000000ff' }}>{item.nombre}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        <CuadrosOpciones data={estaciones} seleccion={estacionSeleccionada} setSeleccion={setEstacionSeleccionada} titulo="¿A dónde lo mandarás?" />
+
+        <TouchableOpacity
+          style={[styles.pedirBtn, { opacity: enviandoViaje ? 0.6 : 1 }]}
+          onPress={enviarViaje}
+          disabled={enviandoViaje}
+        >
+          <Text style={styles.pedirBtnText}>{enviandoViaje ? 'Enviando...' : 'Enviar Viaje'}</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      {/* ✅ ÍCONO NARANJA — Viaje recibido (del contexto global, persiste en cualquier pantalla) */}
+      {viajeRecibidoPendiente && (
+        <TouchableOpacity
+          style={{
+            position: 'absolute',
+            bottom: ultimoViajeEnviado ? 90 : 30,
+            right: 20,
+            backgroundColor: '#e67e00',
+            padding: 12,
+            borderRadius: 25,
+            zIndex: 10,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+          onPress={() => navigation.navigate('ConfirmacionViaje', viajeRecibidoPendiente)}
+        >
+          <Text style={{ color: '#fff', fontWeight: 'bold' }}>📬 Viaje recibido</Text>
+        </TouchableOpacity>
       )}
 
-      {/* ESTACIÓN */}
-      <CuadrosOpciones
-        data={estaciones}
-        seleccion={estacionSeleccionada}
-        setSeleccion={setEstacionSeleccionada}
-        titulo="¿A dónde lo mandarás?"
-      />
-
-      {/* BOTÓN ENVIAR */}
-      <TouchableOpacity
-        style={[styles.pedirBtn, { opacity: enviandoViaje ? 0.6 : 1 }]}
-        onPress={enviarViaje}
-        disabled={enviandoViaje}
-      >
-        <Text style={styles.pedirBtnText}>
-          {enviandoViaje ? 'Enviando...' : 'Enviar Viaje'}
-        </Text>
-      </TouchableOpacity>
-
-    
-    </ScrollView>
+      {/* ÍCONO AZUL — Último viaje que YO envié */}
+      {ultimoViajeEnviado && (
+        <TouchableOpacity
+          style={{
+            position: 'absolute',
+            bottom: 30,
+            right: 20,
+            backgroundColor: '#007BFF',
+            padding: 12,
+            borderRadius: 25,
+            zIndex: 10,
+          }}
+          onPress={() => navigation.navigate('ConfirmacionViaje', {
+            ...ultimoViajeEnviado,
+            remitente: 'Usuario remitente',
+          })}
+        >
+          <Text style={{ color: '#fff', fontWeight: 'bold' }}>📄 Último Viaje</Text>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }

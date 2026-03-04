@@ -1,75 +1,89 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Modal, Pressable } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Modal, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import { styles } from '../styles/ActividadScreen.styles';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 
 type Viaje = {
-  id: string;
+  id: number;
+  ubicacion: string;
   objeto: string;
-  direccion: string;
-  fecha: string;
-  estado: 'Entregado' | 'En camino' | 'Cancelado' | 'Error';
-  remitente: string;
-  duracion: string;
-  robot: string;
-  observaciones: string;
+  destinatario: string;
+  estacion: string;
+  fecha_creacion: string;
+  fecha_formateada: string;
+  estado: string;
 };
 
-const viajes: Viaje[] = [
-  {
-    id: '1',
-    objeto: 'Documento importante',
-    direccion: 'Av. Reforma 123, CDMX',
-    fecha: '24 Jul 2025 - 10:45 AM',
-    estado: 'Entregado',
-    remitente: 'Oficina Legal CDMX',
-    duracion: '35 minutos',
-    robot: 'RobotX-01',
-    observaciones: 'Entregado sin inconvenientes',
-  },
-  {
-    id: '2',
-    objeto: 'Comida',
-    direccion: 'Calle Luna 456, Toluca',
-    fecha: '23 Jul 2025 - 4:15 PM',
-    estado: 'En camino',
-    remitente: 'Restaurante Luna',
-    duracion: '—',
-    robot: 'RobotX-03',
-    observaciones: 'Robot en camino, sin retrasos',
-  },
-  {
-    id: '3',
-    objeto: 'Paquete mediano',
-    direccion: 'Carr. Nacional 789, GDL',
-    fecha: '22 Jul 2025 - 1:00 PM',
-    estado: 'Cancelado',
-    remitente: 'Centro de Distribución GDL',
-    duracion: '—',
-    robot: 'RobotX-05',
-    observaciones: 'Cancelado por condiciones climáticas',
-  },
-];
+const colorEstado = (estado: string) => {
+  switch (estado) {
+    case 'entregado':  return styles.entregado;
+    case 'pendiente':  return styles.enCamino;
+    case 'cancelado':  return styles.cancelado;
+    default:           return {};
+  }
+};
+
+const labelEstado = (estado: string) => {
+  switch (estado) {
+    case 'entregado': return 'Entregado';
+    case 'pendiente': return 'En camino';
+    case 'cancelado': return 'Cancelado';
+    default:          return estado;
+  }
+};
 
 export default function ActivityScreen() {
+  const [viajes, setViajes] = useState<Viaje[]>([]);
   const [selectedViaje, setSelectedViaje] = useState<Viaje | null>(null);
+  const [cargando, setCargando] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const cargarViajes = async (esRefresh = false) => {
+    if (esRefresh) setRefreshing(true);
+    else setCargando(true);
+    setError(null);
+
+    try {
+      const userString = await AsyncStorage.getItem('user');
+      if (!userString) { setError('No se encontró sesión'); return; }
+      const user = JSON.parse(userString);
+
+      const resp = await fetch(`https://api.abelandres.dpdns.org/api/viajes/usuario/${user.id}`);
+      const data = await resp.json();
+
+      if (data.success) {
+        setViajes(data.viajes);
+      } else {
+        setError('No se pudieron cargar los viajes');
+      }
+    } catch (e) {
+      setError('Error de conexión');
+      console.error(e);
+    } finally {
+      setCargando(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Se recarga cada vez que el usuario entra a esta pestaña
+  useFocusEffect(
+    useCallback(() => {
+      cargarViajes();
+    }, [])
+  );
 
   const renderItem = ({ item }: { item: Viaje }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <Text style={styles.objeto}>{item.objeto}</Text>
-        <Text
-          style={[
-            styles.estado,
-            item.estado === 'Entregado' && styles.entregado,
-            item.estado === 'En camino' && styles.enCamino,
-            item.estado === 'Cancelado' && styles.cancelado,
-          ]}
-        >
-          {item.estado}
+        <Text style={[styles.estado, colorEstado(item.estado)]}>
+          {labelEstado(item.estado)}
         </Text>
       </View>
-      <Text style={styles.direccion}>{item.direccion}</Text>
-      <Text style={styles.fecha}>{item.fecha}</Text>
+      <Text style={styles.direccion}>{item.estacion}</Text>
+      <Text style={styles.fecha}>{item.fecha_formateada ?? item.fecha_creacion}</Text>
 
       <TouchableOpacity style={styles.verMasBtn} onPress={() => setSelectedViaje(item)}>
         <Text style={styles.verMasText}>Ver más</Text>
@@ -80,12 +94,31 @@ export default function ActivityScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Actividad Reciente</Text>
-      <FlatList
-        data={viajes}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.lista}
-      />
+
+      {cargando ? (
+        <ActivityIndicator size="large" color="#007BFF" style={{ marginTop: 40 }} />
+      ) : error ? (
+        <View style={{ alignItems: 'center', marginTop: 40 }}>
+          <Text style={{ color: '#cc0000', marginBottom: 10 }}>{error}</Text>
+          <TouchableOpacity onPress={() => cargarViajes()}>
+            <Text style={{ color: '#007BFF' }}>Reintentar</Text>
+          </TouchableOpacity>
+        </View>
+      ) : viajes.length === 0 ? (
+        <Text style={{ textAlign: 'center', marginTop: 40, color: '#888' }}>
+          No tienes viajes registrados aún
+        </Text>
+      ) : (
+        <FlatList
+          data={viajes}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderItem}
+          contentContainerStyle={styles.lista}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => cargarViajes(true)} />
+          }
+        />
+      )}
 
       <Modal
         visible={!!selectedViaje}
@@ -98,12 +131,11 @@ export default function ActivityScreen() {
             {selectedViaje && (
               <>
                 <Text style={styles.modalTitle}>{selectedViaje.objeto}</Text>
-                <Text style={styles.modalText}>Dirección: {selectedViaje.direccion}</Text>
-                <Text style={styles.modalText}>Fecha: {selectedViaje.fecha}</Text>
-                <Text style={styles.modalText}>Remitente: {selectedViaje.remitente}</Text>
-                <Text style={styles.modalText}>Duración: {selectedViaje.duracion}</Text>
-                <Text style={styles.modalText}>Robot asignado: {selectedViaje.robot}</Text>
-                <Text style={styles.modalText}>Observaciones: {selectedViaje.observaciones}</Text>
+                <Text style={styles.modalText}>Ubicación origen: {selectedViaje.ubicacion}</Text>
+                <Text style={styles.modalText}>Estación destino: {selectedViaje.estacion}</Text>
+                <Text style={styles.modalText}>Fecha: {selectedViaje.fecha_formateada ?? selectedViaje.fecha_creacion}</Text>
+                <Text style={styles.modalText}>Estado: {labelEstado(selectedViaje.estado)}</Text>
+                <Text style={styles.modalText}>Destinatario ID: {selectedViaje.destinatario}</Text>
 
                 <Pressable style={styles.cerrarBtn} onPress={() => setSelectedViaje(null)}>
                   <Text style={styles.cerrarBtnText}>Cerrar</Text>
