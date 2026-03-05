@@ -63,6 +63,7 @@ const enviarViajeABaseDatos = async (datosViaje: {
   ubicacion: string;
   objeto: string;
   destinatarioId: string;
+  remitenteId: string;
   estacion: string;
   fechaCreacion: string;
 }) => {
@@ -126,10 +127,13 @@ export default function Home() {
     if (!estacionSeleccionada) { Alert.alert("Falta estación", "Selecciona una estación"); return; }
 
     setEnviandoViaje(true);
+    const userString = await AsyncStorage.getItem('user');
+    const user = userString ? JSON.parse(userString) : null;
     const datosViaje = {
       ubicacion: puntoSeleccionado,
       objeto: objetoSeleccionado,
       destinatarioId,
+      remitenteId: String(user?.id ?? ''), // ✅ quién envía
       estacion: estacionSeleccionada,
       fechaCreacion: new Date().toISOString(),
     };

@@ -13,6 +13,9 @@ type Viaje = {
   fecha_creacion: string;
   fecha_formateada: string;
   estado: string;
+  remitente: string;
+  nombre_remitente: string;
+  nombre_destinatario: string;
 };
 
 const colorEstado = (estado: string) => {
@@ -135,7 +138,8 @@ export default function ActivityScreen() {
                 <Text style={styles.modalText}>Estación destino: {selectedViaje.estacion}</Text>
                 <Text style={styles.modalText}>Fecha: {selectedViaje.fecha_formateada ?? selectedViaje.fecha_creacion}</Text>
                 <Text style={styles.modalText}>Estado: {labelEstado(selectedViaje.estado)}</Text>
-                <Text style={styles.modalText}>Destinatario ID: {selectedViaje.destinatario}</Text>
+                <Text style={styles.modalText}>Remitente: {selectedViaje.nombre_remitente || '—'}</Text>
+                <Text style={styles.modalText}>Destinatario: {selectedViaje.nombre_destinatario || '—'}</Text>
 
                 <Pressable style={styles.cerrarBtn} onPress={() => setSelectedViaje(null)}>
                   <Text style={styles.cerrarBtnText}>Cerrar</Text>
