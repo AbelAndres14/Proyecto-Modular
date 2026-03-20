@@ -18,11 +18,13 @@ type ViajeRecibido = {
 };
 
 type SocketContextType = {
+  socket: Socket | null;
   viajeRecibidoPendiente: ViajeRecibido | null;
   limpiarViajePendiente: () => void;
 };
 
 const SocketContext = createContext<SocketContextType>({
+  socket: null,
   viajeRecibidoPendiente: null,
   limpiarViajePendiente: () => {},
 });
@@ -33,7 +35,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const socketRef = useRef<Socket | null>(null);
   const [viajeRecibidoPendiente, setViajeRecibidoPendiente] = useState<ViajeRecibido | null>(null);
-
+  const [socket, setSocket] = useState<Socket | null>(null);
+  
   // Cargar viaje pendiente al iniciar
   useEffect(() => {
     const cargarViajePendiente = async () => {
@@ -54,11 +57,21 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       if (!userString) return;
       const user = JSON.parse(userString);
 
-      socketRef.current = io('https://api.abelandres.dpdns.org');
+      const s = io('https://api.abelandres.dpdns.org');
+      socketRef.current = s;
+      setSocket(s);
 
       socketRef.current.on('connect', () => {
         console.log('Socket global conectado:', socketRef.current?.id);
         socketRef.current?.emit('registrarUsuario', user.id);
+      });
+
+      socketRef.current.on('robotPosicion', (data) => {
+        console.log("🤖 Robot:", data);
+      });
+
+      socketRef.current.on('robotRuta', (data) => {
+        console.log("🤖 Ruta:", data);
       });
 
       socketRef.current.on('notificacion', async (data) => {
@@ -70,7 +83,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
           remitente: data.remitente ?? 'Usuario remitente',
           fechaCreacion: data.fechaCreacion ?? new Date().toISOString(),
         };
-
+        console.log("notificionnnnn:", data);
         // Guardar en AsyncStorage antes de mostrar alerta
         try {
           await AsyncStorage.setItem(STORAGE_KEY_RECIBIDO, JSON.stringify(nuevoViaje));
@@ -110,7 +123,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SocketContext.Provider value={{ viajeRecibidoPendiente, limpiarViajePendiente }}>
+    <SocketContext.Provider value={{ socket, viajeRecibidoPendiente, limpiarViajePendiente }}>
       {children}
     </SocketContext.Provider>
   );
