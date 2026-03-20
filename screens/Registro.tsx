@@ -171,7 +171,7 @@ export default function RegistroScreen({ navigation }: any) {
          if (data.success && data.usuario && data.usuario.id) {
   try {
     const response = await fetch(
-      "https://pyrophoric-tribrachial-roxana.ngrok-free.dev/registrar_rostro",
+      "https://aisai.abelandres.dpdns.org/registrar_rostro",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

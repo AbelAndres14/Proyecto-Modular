@@ -15,9 +15,6 @@ export default function ConfirmacionViaje() {
 
   const [fotoUri, setFotoUri] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // ✅ soyDestinatario = true si el viaje existe en AsyncStorage (me lo mandaron a mí)
-  // false si solo viene por params (yo lo envié)
   const [soyDestinatario, setSoyDestinatario] = useState(false);
 
   const [datosViaje, setDatosViaje] = useState({
@@ -34,12 +31,10 @@ export default function ConfirmacionViaje() {
       try {
         const guardado = await AsyncStorage.getItem(STORAGE_KEY_RECIBIDO);
         if (guardado) {
-          // Si hay algo en AsyncStorage, este dispositivo es el destinatario
           const viajeGuardado = JSON.parse(guardado);
           setDatosViaje(viajeGuardado);
-          setSoyDestinatario(true); // ✅ soy el que recibe
+          setSoyDestinatario(true);
         } else {
-          // No hay nada en AsyncStorage — soy el remitente
           setSoyDestinatario(false);
         }
       } catch (e) {
@@ -54,7 +49,12 @@ export default function ConfirmacionViaje() {
     const blob = await response.blob();
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        // ✅ quitar prefijo data:image/...;base64, si existe
+        const clean = result.includes(',') ? result.split(',')[1] : result;
+        resolve(clean);
+      };
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
@@ -81,6 +81,7 @@ export default function ConfirmacionViaje() {
 
       try {
         setIsProcessing(true);
+        // ✅ result.assets[0].base64 ya viene limpio sin prefijo
         const base64Data = result.assets[0].base64
           ? result.assets[0].base64
           : await convertToBase64(imageUri);
@@ -97,24 +98,26 @@ export default function ConfirmacionViaje() {
 
   const enviarRostro = async (base64Data: string) => {
     try {
-      const idUsuario = await AsyncStorage.getItem("id_usuario");
-      if (!idUsuario) {
-        Alert.alert("Error", "No se encontró el ID del usuario");
+      // ✅ leer y parsear el objeto user completo
+      const userString = await AsyncStorage.getItem("user");
+      if (!userString) {
+        Alert.alert("Error", "No se encontró la sesión del usuario");
         return;
       }
+      const user = JSON.parse(userString);
+      const idUsuario = parseInt(user.id, 10); // ✅ la API espera int
 
-      const response = await fetch("https://pyrophoric-tribrachial-roxana.ngrok-free.dev/validar_rostro", {
+      const response = await fetch("https://aisai.abelandres.dpdns.org/validar_rostro", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id_usuario: idUsuario,
-          imagen_base64: base64Data,
+          id_usuario: idUsuario,  // ✅ int
+          imagen_base64: base64Data, // ✅ sin prefijo
         }),
       });
 
       const data = await response.json();
       if (data.coincidencia) {
-        // ✅ Solo aquí se borra — entrega confirmada con rostro
         await AsyncStorage.removeItem(STORAGE_KEY_RECIBIDO);
         Alert.alert("✅ Entregado", "Rostro validado. El viaje ha sido confirmado.");
       } else {
@@ -151,7 +154,6 @@ export default function ConfirmacionViaje() {
         )}
       </View>
 
-      {/* ✅ Captura de rostro SOLO para el destinatario (quien tiene el viaje en AsyncStorage) */}
       {soyDestinatario ? (
         <>
           <TouchableOpacity
